@@ -24,6 +24,16 @@ import { defaultSiteContent } from './siteContent';
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0995/6432/3185/files/FILO.png?v=1775935955';
 const SESSION_KEY = 'construtrack_session_v1';
+const EMPLOYEE_ROLES = ['arquitecto', 'capataz', 'obrero'];
+const EMPLOYEE_FORM_DEFAULTS = {
+  employee_id: '',
+  full_name: '',
+  role: 'obrero',
+  shift: '',
+  email: '',
+  avatar_url: '',
+  admin_code: '',
+};
 
 const PROJECTS = [
   { id: 'PRJ-001', name: 'SkyPoint Tower', location: 'Buenos Aires, ARG', progress: 88, budget: '$120.4M', accessCode: 'SITE-ALPHA-001', status: 'En ejecucion' },
@@ -32,6 +42,7 @@ const PROJECTS = [
 ];
 
 const FALLBACK_USERS = [
+  { id: 'ADM-001', name: 'Administrador Filo', role: 'admin', shift: '07:00-17:00', email: 'admin@filo.local', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', qrCode: null },
   { id: 'ARQ-001', name: 'Arq. Roberto Solis', role: 'arquitecto', shift: '07:00-15:00', email: 'roberto.solis@construtrack.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Roberto', qrCode: null },
   { id: 'CAP-042', name: 'Juan Perez', role: 'capataz', shift: '08:00-17:00', email: 'juan.perez@construtrack.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Juan', qrCode: null },
   { id: 'OBR-105', name: 'Miguel Angel', role: 'obrero', shift: '09:00-18:00', email: 'miguel.angel@construtrack.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Miguel', qrCode: null },
@@ -316,6 +327,10 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   const [usersSource, setUsersSource] = useState('local');
   const [usersError, setUsersError] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [employeeForm, setEmployeeForm] = useState(EMPLOYEE_FORM_DEFAULTS);
+  const [employeeFormMessage, setEmployeeFormMessage] = useState('');
+  const [employeeFormError, setEmployeeFormError] = useState('');
+  const [employeeFormLoading, setEmployeeFormLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState(PROJECTS[0]);
   const [activeTab, setActiveTab] = useState('inicio');
   const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -330,47 +345,46 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     onSiteContentChange((prev) => updater(prev || defaultSiteContent));
   };
 
+  async function loadUsers() {
+    if (!hasSupabaseEnv || !supabase) {
+      setUsers(FALLBACK_USERS);
+      setUsersSource('local');
+      setUsersError('Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Se usa modo local.');
+      return FALLBACK_USERS;
+    }
+
+    const { data, error } = await supabase
+      .from('employees')
+      .select('employee_id, full_name, role, shift, email, avatar_url, qr_code')
+      .order('employee_id', { ascending: true });
+
+    if (error) {
+      setUsers(FALLBACK_USERS);
+      setUsersSource('local');
+      setUsersError(`Supabase no respondio: ${error.message}. Se usa modo local.`);
+      return FALLBACK_USERS;
+    }
+
+    const mapped = (data || []).map(mapDbUser).filter((user) => user.id && user.email);
+    if (mapped.length === 0) {
+      setUsers(FALLBACK_USERS);
+      setUsersSource('local');
+      setUsersError('La tabla employees esta vacia. Se usa modo local.');
+      return FALLBACK_USERS;
+    }
+
+    setUsers(mapped);
+    setUsersSource('supabase');
+    setUsersError('');
+    return mapped;
+  }
+
   useEffect(() => {
     let cancelled = false;
 
-    async function loadUsers() {
-      if (!hasSupabaseEnv || !supabase) {
-        if (!cancelled) {
-          setUsers(FALLBACK_USERS);
-          setUsersSource('local');
-          setUsersError('Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Se usa modo local.');
-        }
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('employees')
-        .select('employee_id, full_name, role, shift, email, avatar_url, qr_code')
-        .order('employee_id', { ascending: true });
-
-      if (cancelled) return;
-
-      if (error) {
-        setUsers(FALLBACK_USERS);
-        setUsersSource('local');
-        setUsersError(`Supabase no respondio: ${error.message}. Se usa modo local.`);
-        return;
-      }
-
-      const mapped = (data || []).map(mapDbUser).filter((user) => user.id && user.email);
-      if (mapped.length === 0) {
-        setUsers(FALLBACK_USERS);
-        setUsersSource('local');
-        setUsersError('La tabla employees esta vacia. Se usa modo local.');
-        return;
-      }
-
-      setUsers(mapped);
-      setUsersSource('supabase');
-      setUsersError('');
-    }
-
-    loadUsers();
+    loadUsers().then((result) => {
+      if (cancelled || !result) return;
+    });
     return () => {
       cancelled = true;
     };
@@ -446,6 +460,51 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   const handleLogin = (user) => {
     setCurrentUser(user);
     localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id, loggedAt: new Date().toISOString() }));
+  };
+
+  const handleCreateEmployee = async (event) => {
+    event.preventDefault();
+    setEmployeeFormMessage('');
+    setEmployeeFormError('');
+
+    if (!currentUser || currentUser.role !== 'admin') {
+      setEmployeeFormError('Solo un administrador puede crear usuarios.');
+      return;
+    }
+
+    if (!hasSupabaseEnv) {
+      setEmployeeFormError('Falta configurar Supabase en Vercel.');
+      return;
+    }
+
+    if (!employeeForm.admin_code.trim()) {
+      setEmployeeFormError('Ingresa el codigo de administrador.');
+      return;
+    }
+
+    setEmployeeFormLoading(true);
+    try {
+      const response = await fetch('/api/employees', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(employeeForm),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || 'No se pudo crear el usuario.');
+      }
+
+      await loadUsers();
+      setEmployeeForm(EMPLOYEE_FORM_DEFAULTS);
+      setEmployeeFormMessage(`Usuario ${payload.employee?.employee_id || 'creado'} registrado correctamente.`);
+    } catch (error) {
+      setEmployeeFormError(error.message || 'No se pudo crear el usuario.');
+    } finally {
+      setEmployeeFormLoading(false);
+    }
   };
 
   const refreshAttendance = async () => {
@@ -541,7 +600,10 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     { id: 'planos', icon: MapIcon, label: 'Planos AR', role: 'arquitecto' },
   ].filter(
     (item) =>
-      !item.role || item.role === currentUser.role || (currentUser.role === 'arquitecto' && item.role === 'capataz')
+      !item.role ||
+      currentUser.role === 'admin' ||
+      item.role === currentUser.role ||
+      (currentUser.role === 'arquitecto' && item.role === 'capataz')
   );
 
   const rolesSummary = users.reduce((acc, user) => {
@@ -782,6 +844,116 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                   </div>
                   <Badge tone="neutral">{users.length} usuarios</Badge>
                 </div>
+
+                {currentUser.role === 'admin' && (
+                  <div className="mt-6 rounded-[28px] border border-[#dfe8df] bg-[#f7fbf7] p-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#1F6B3F]">Alta de personal</p>
+                        <h3 className="mt-1 text-xl font-bold text-slate-900">Crear acceso para el equipo</h3>
+                        <p className="mt-2 text-sm text-slate-500">Solo el administrador puede dar de alta arquitectos, capataces y obreros.</p>
+                      </div>
+                      <Badge tone="green">Admin</Badge>
+                    </div>
+
+                    <form onSubmit={handleCreateEmployee} className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <div>
+                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">ID de personal</label>
+                        <input
+                          required
+                          value={employeeForm.employee_id}
+                          onChange={(event) => setEmployeeForm((prev) => ({ ...prev, employee_id: event.target.value }))}
+                          placeholder="CAP-200"
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Nombre completo</label>
+                        <input
+                          required
+                          value={employeeForm.full_name}
+                          onChange={(event) => setEmployeeForm((prev) => ({ ...prev, full_name: event.target.value }))}
+                          placeholder="Nombre Apellido"
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Correo</label>
+                        <input
+                          type="email"
+                          required
+                          value={employeeForm.email}
+                          onChange={(event) => setEmployeeForm((prev) => ({ ...prev, email: event.target.value }))}
+                          placeholder="persona@filo.com"
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Rol</label>
+                        <select
+                          value={employeeForm.role}
+                          onChange={(event) => setEmployeeForm((prev) => ({ ...prev, role: event.target.value }))}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        >
+                          {EMPLOYEE_ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {role}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Turno</label>
+                        <input
+                          required
+                          value={employeeForm.shift}
+                          onChange={(event) => setEmployeeForm((prev) => ({ ...prev, shift: event.target.value }))}
+                          placeholder="07:00-15:00"
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Avatar URL</label>
+                        <input
+                          value={employeeForm.avatar_url}
+                          onChange={(event) => setEmployeeForm((prev) => ({ ...prev, avatar_url: event.target.value }))}
+                          placeholder="https://..."
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Codigo admin</label>
+                        <input
+                          required
+                          type="password"
+                          value={employeeForm.admin_code}
+                          onChange={(event) => setEmployeeForm((prev) => ({ ...prev, admin_code: event.target.value }))}
+                          placeholder="codigo privado"
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2 xl:col-span-3">
+                        <button
+                          type="submit"
+                          disabled={employeeFormLoading}
+                          className="w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {employeeFormLoading ? 'Creando usuario...' : 'Crear acceso de equipo'}
+                        </button>
+                      </div>
+                    </form>
+
+                    {employeeFormMessage && <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{employeeFormMessage}</p>}
+                    {employeeFormError && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{employeeFormError}</p>}
+                  </div>
+                )}
 
                 <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {users.map((user) => (

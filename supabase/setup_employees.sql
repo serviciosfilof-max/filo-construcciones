@@ -1,7 +1,7 @@
 create table if not exists public.employees (
   employee_id text primary key,
   full_name text not null,
-  role text not null check (role in ('arquitecto', 'capataz', 'obrero')),
+  role text not null check (role in ('admin', 'arquitecto', 'capataz', 'obrero')),
   shift text not null,
   email text not null unique,
   avatar_url text,
@@ -17,6 +17,26 @@ on public.employees
 for select
 to anon, authenticated
 using (true);
+
+insert into public.employees (employee_id, full_name, role, shift, email, avatar_url, qr_code)
+values
+  (
+    'ADM-001',
+    'Administrador Filo',
+    'admin',
+    '07:00-17:00',
+    'admin@filo.local',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
+    'CTLOGIN|ADM-001|admin@filo.local|admin'
+  )
+on conflict (employee_id) do update
+set
+  full_name = excluded.full_name,
+  role = excluded.role,
+  shift = excluded.shift,
+  email = excluded.email,
+  avatar_url = excluded.avatar_url,
+  qr_code = excluded.qr_code;
 
 insert into public.employees (employee_id, full_name, role, shift, email, avatar_url, qr_code)
 values
