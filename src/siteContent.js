@@ -1,12 +1,12 @@
-export const defaultSiteContent = {
+ï»¿export const defaultSiteContent = {
   logoUrl: 'https://cdn.shopify.com/s/files/1/0995/6432/3185/files/FILO.png?v=1775935955',
   hero: {
     eyebrow: 'Excelencia Constructiva',
     title: 'Solidez',
-    accent: 'Sin Límites.',
-    subtitle: 'Obras, desarrollo y ejecución con una estética limpia, moderna y enfocada en resultados.',
+    accent: 'Sin LÃ­mites.',
+    subtitle: 'Obras, desarrollo y ejecuciÃ³n con una estÃ©tica limpia, moderna y enfocada en resultados. PedÃ­ presupuesto sin mandar a tus clientes directo a WhatsApp.',
     primaryCta: 'Ver Proyectos',
-    secondaryCta: 'Cotizar ahora',
+    secondaryCta: 'Pedir presupuesto',
     image: 'https://images.unsplash.com/photo-1541888946425-d81bb19480c5?auto=format&fit=crop&q=80',
   },
   sections: [
@@ -14,7 +14,7 @@ export const defaultSiteContent = {
     { label: 'Empresa', id: 'empresa' },
     { label: 'Proyectos', id: 'proyectos' },
     { label: 'Servicios', id: 'servicios' },
-    { label: 'Contacto', id: 'contacto' },
+    { label: 'Presupuesto', id: 'presupuesto' },
   ],
   highlights: [
     {
@@ -24,12 +24,12 @@ export const defaultSiteContent = {
     },
     {
       title: 'Pre-moldados',
-      desc: 'Soluciones rápidas para obras grandes.',
+      desc: 'Soluciones rÃ¡pidas para obras grandes.',
       image: 'https://images.unsplash.com/photo-1590486803833-ffc6f0861f3c?auto=format&fit=crop&q=80',
     },
     {
       title: 'Proyecto Estructural',
-      desc: 'Planificación y ejecución integral.',
+      desc: 'PlanificaciÃ³n y ejecuciÃ³n integral.',
       image: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&q=80',
     },
   ],
@@ -58,23 +58,23 @@ export const defaultSiteContent = {
   services: [
     {
       title: 'Estructura',
-      desc: 'Obras de gran escala con gestión integral.',
+      desc: 'Obras de gran escala con gestiÃ³n integral.',
     },
     {
-      title: 'Ejecución',
+      title: 'EjecuciÃ³n',
       desc: 'Capacidad operativa y control diario de obra.',
     },
     {
       title: 'Desarrollo',
-      desc: 'Proyectos, coordinación y seguimiento técnico.',
+      desc: 'Proyectos, coordinaciÃ³n y seguimiento tÃ©cnico.',
     },
   ],
   contact: {
-    phone: '+54 11 4567-8900',
+    phone: '+54 11 2301-0751',
     location: 'Oficinas Centrales, Buenos Aires',
     hours: 'Lun a Vie 8:00 - 18:00',
   },
   footer: {
-    copy: '© 2024 FILO CONSTRUCTORA. CALIDAD CERTIFICADA.',
+    copy: 'Â© 2024 FILO CONSTRUCTORA. CALIDAD CERTIFICADA.',
   },
 };

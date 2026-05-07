@@ -1,5 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { Building2, ChevronRight, Clock, HardHat, Instagram, Layers, MapPin, Menu, MessageCircle, Phone, Play, X } from 'lucide-react';
+﻿import React, { useEffect, useState } from 'react';
+import {
+  ArrowRight,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  HardHat,
+  Instagram,
+  Layers,
+  Menu,
+  MessageCircle,
+  Play,
+  Ruler,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import { defaultSiteContent } from './siteContent';
 
 function goTo(id, closeMenu) {
@@ -18,10 +35,59 @@ function ServiceCard({ icon: Icon, title, desc }) {
   );
 }
 
+const WHATSAPP_NUMBER = '5491123010751';
+const WHATSAPP_TEXT = encodeURIComponent(
+  'Hola, vi la web de FILO y quiero pedir presupuesto para mi obra. Quiero que me orienten sobre alcance, tiempos y próxima etapa.'
+);
+const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_TEXT}`;
+
+const LEAD_DEFAULTS = {
+  name: '',
+  company: '',
+  phone: '',
+  email: '',
+  projectType: '',
+  budget: '',
+  timeline: '',
+  location: '',
+  surface: '',
+  message: '',
+};
+
+const PROJECT_TYPES = ['Obra nueva', 'Refacción', 'Estructura / hormigón', 'Desarrollo comercial', 'Desarrollo industrial'];
+const BUDGET_RANGES = ['Menos de ARS 15M', 'ARS 15M a 50M', 'ARS 50M a 150M', 'Más de ARS 150M'];
+const TIMELINES = ['Inmediato', '30 a 60 días', '60 a 90 días', 'Más de 90 días'];
+
+function buildLeadResult(form) {
+  const surface = Number(form.surface) || 0;
+  const score =
+    (form.name ? 1 : 0) +
+    (form.phone ? 1 : 0) +
+    (form.email ? 1 : 0) +
+    (form.location ? 1 : 0) +
+    (form.projectType ? 1 : 0) +
+    (form.budget ? 1 : 0) +
+    (form.timeline ? 1 : 0) +
+    (surface >= 80 ? 1 : 0) +
+    (surface >= 250 ? 1 : 0);
+
+  const status = score >= 8 ? 'Proyecto muy calificado' : score >= 5 ? 'Proyecto para revisar' : 'Faltan datos para priorizar';
+  const nextStep =
+    score >= 8
+      ? 'Nos deja un lead sólido. Podemos responder con propuesta y próximos pasos.'
+      : score >= 5
+        ? 'Hay interés real. Falta un poco de contexto para filtrar mejor.'
+        : 'Pedimos más datos para no abrir conversaciones que no encajan con el alcance.';
+
+  return { score, status, nextStep };
+}
+
 export default function PublicSite({ onEnterInternal, content = defaultSiteContent }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState('inicio');
+  const [leadForm, setLeadForm] = useState(LEAD_DEFAULTS);
+  const [leadResult, setLeadResult] = useState(null);
 
   useEffect(() => {
     const onScroll = () => {
@@ -38,6 +104,26 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, [content.sections]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('filo_lead_intake_v1');
+      if (raw) {
+        setLeadForm({ ...LEAD_DEFAULTS, ...JSON.parse(raw) });
+      }
+    } catch {
+      setLeadForm(LEAD_DEFAULTS);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('filo_lead_intake_v1', JSON.stringify(leadForm));
+  }, [leadForm]);
+
+  const handleLeadSubmit = (event) => {
+    event.preventDefault();
+    setLeadResult(buildLeadResult(leadForm));
+  };
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 selection:bg-orange-500 selection:text-white">
@@ -73,7 +159,9 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
       </nav>
 
       <div className={`fixed inset-0 z-[60] flex flex-col items-center justify-center gap-8 bg-white transition-transform duration-500 md:hidden ${menuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <button className="absolute right-6 top-6" onClick={() => setMenuOpen(false)}><X size={32} /></button>
+        <button className="absolute right-6 top-6" onClick={() => setMenuOpen(false)}>
+          <X size={32} />
+        </button>
         {content.sections.map((item) => (
           <button key={item.id} className="text-3xl font-black uppercase italic hover:text-orange-600" onClick={() => goTo(item.id, () => setMenuOpen(false))}>
             {item.label}
@@ -101,7 +189,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
               <button onClick={() => goTo('proyectos')} className="bg-orange-600 px-10 py-5 text-sm font-black uppercase tracking-widest text-white transition hover:bg-white hover:text-zinc-900">
                 {content.hero.primaryCta}
               </button>
-              <button onClick={() => goTo('contacto')} className="border border-white/30 px-10 py-5 text-sm font-black uppercase tracking-widest text-white transition hover:bg-white/10">
+              <button onClick={() => goTo('presupuesto')} className="border border-white/30 px-10 py-5 text-sm font-black uppercase tracking-widest text-white transition hover:bg-white/10">
                 {content.hero.secondaryCta}
               </button>
             </div>
@@ -148,18 +236,14 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
             </div>
             <button className="mt-8 flex items-center gap-3 border border-white/10 bg-white/5 px-6 py-3 transition hover:bg-white/10 md:mt-0">
               <Instagram className="text-orange-500" />
-              <span className="text-xs font-bold uppercase tracking-widest">Ver m�s en Instagram</span>
+              <span className="text-xs font-bold uppercase tracking-widest">Ver más en Instagram</span>
             </button>
           </div>
 
           <div className="grid gap-6 md:grid-cols-4">
             {content.projects.map((project, index) => (
               <div key={project.title} className="group relative aspect-[9/16] overflow-hidden rounded-lg bg-zinc-900">
-                <img
-                  src={project.image}
-                  className="h-full w-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-105"
-                  alt={project.title}
-                />
+                <img src={project.image} className="h-full w-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-105" alt={project.title} />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-colors group-hover:bg-orange-600">
                     <Play fill="white" size={24} />
@@ -185,59 +269,253 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
         </div>
       </section>
 
-      <section id="contacto" className="bg-white py-24">
-        <div className="container mx-auto px-6">
-          <div className="overflow-hidden rounded-3xl border border-zinc-100 bg-zinc-50 shadow-2xl md:flex">
-            <div className="bg-zinc-900 p-12 text-white md:w-1/2 md:p-20">
-              <h3 className="mb-8 text-5xl font-black uppercase italic">Hablemos <br /> de su obra.</h3>
-              <div className="space-y-8">
-                <div className="flex items-start gap-6">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center bg-orange-600"><Phone /></div>
-                  <div>
-                    <p className="mb-1 text-xs font-black uppercase text-zinc-500">Tel�fono</p>
-                    <p className="text-xl font-bold">{content.contact.phone}</p>
+      <section id="presupuesto" className="relative overflow-hidden bg-[#0d1110] py-24 text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.24),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(255,255,255,0.08),_transparent_28%)]" />
+        <div className="container relative mx-auto px-6">
+          <div className="mb-12 max-w-3xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] text-orange-400">
+              <Sparkles className="h-3.5 w-3.5" />
+              Filtro de presupuesto
+            </span>
+            <h3 className="mt-5 text-5xl font-black uppercase italic leading-none md:text-7xl">Contanos tu obra y filtramos mejor</h3>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-white/70">
+              En vez de mandar todos los leads a WhatsApp, hacemos una precalificación acá mismo. Así respondemos mejor, ordenamos los presupuestos y evitamos chats que no encajan con el alcance.
+            </p>
+          </div>
+
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="rounded-[36px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl md:p-10">
+              <div className="flex items-center gap-3 text-sm font-black uppercase tracking-[0.3em] text-orange-300">
+                <ShieldCheck className="h-5 w-5" />
+                Respuesta más ordenada
+              </div>
+              <h4 className="mt-6 text-3xl font-black uppercase italic">No es un chat, es una pre-cotización</h4>
+              <p className="mt-4 text-sm leading-7 text-white/70">
+                Pedimos pocos datos, pero los correctos. Con eso sabemos si el proyecto está listo para evaluar, si falta información o si conviene agendar una llamada.
+              </p>
+
+              <div className="mt-8 space-y-4">
+                {[
+                  'Recibimos nombre, rubro, alcance y plazo antes de responder.',
+                  'Filtramos proyectos chicos, medios y grandes con el mismo formulario.',
+                  'WhatsApp queda como apoyo para responder sobre esta página, no como paso obligatorio.',
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-orange-400" />
+                    <p className="text-sm leading-6 text-white/80">{item}</p>
                   </div>
+                ))}
+              </div>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-3xl border border-white/10 bg-black/20 p-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/50">Ubicación</p>
+                  <p className="mt-3 text-lg font-bold">{content.contact.location}</p>
                 </div>
-                <div className="flex items-start gap-6">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center bg-orange-600"><MapPin /></div>
-                  <div>
-                    <p className="mb-1 text-xs font-black uppercase text-zinc-500">Ubicaci�n</p>
-                    <p className="text-xl font-bold">{content.contact.location}</p>
-                  </div>
+                <div className="rounded-3xl border border-white/10 bg-black/20 p-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/50">Horario</p>
+                  <p className="mt-3 text-lg font-bold">{content.contact.hours}</p>
                 </div>
-                <div className="flex items-start gap-6">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center bg-orange-600"><Clock /></div>
-                  <div>
-                    <p className="mb-1 text-xs font-black uppercase text-zinc-500">Horario</p>
-                    <p className="text-xl font-bold">{content.contact.hours}</p>
-                  </div>
+                <div className="rounded-3xl border border-white/10 bg-black/20 p-5 sm:col-span-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/50">WhatsApp directo</p>
+                  <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-lg font-bold text-orange-300 transition hover:text-orange-200">
+                    {content.contact.phone}
+                    <ArrowRight className="h-4 w-4" />
+                  </a>
                 </div>
               </div>
 
-              <div className="mt-16 flex gap-6 border-t border-zinc-800 pt-16">
-                <Instagram className="cursor-pointer hover:text-orange-500" />
-                <MessageCircle className="cursor-pointer hover:text-orange-500" />
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-[0.25em] text-white transition hover:bg-orange-500">
+                  <MessageCircle className="h-4 w-4" />
+                  Consultar por WhatsApp
+                </a>
+                <button onClick={() => goTo('inicio')} className="rounded-full border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.25em] text-white/80 transition hover:border-white/30 hover:bg-white/5">
+                  Volver al inicio
+                </button>
               </div>
             </div>
 
-            <div className="p-12 md:w-1/2 md:p-20">
-              <form className="space-y-6">
+            <div className="rounded-[36px] bg-white p-6 text-zinc-900 shadow-2xl md:p-10">
+              <div className="flex flex-col gap-3 border-b border-zinc-100 pb-6 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <label className="mb-2 block text-xs font-black uppercase tracking-widest text-zinc-400">Nombre Completo</label>
-                  <input type="text" className="w-full border-b-2 border-zinc-200 bg-white py-3 focus:border-orange-600 focus:outline-none" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.35em] text-orange-600">Solicitud filtrada</p>
+                  <h4 className="mt-3 text-3xl font-black uppercase italic">Pedí presupuesto</h4>
                 </div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-700">
+                  <CalendarDays className="h-4 w-4" />
+                  Sin redirección automática
+                </div>
+              </div>
+
+              <form onSubmit={handleLeadSubmit} className="mt-8 grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-xs font-black uppercase tracking-widest text-zinc-400">Email corporativo</label>
-                  <input type="email" className="w-full border-b-2 border-zinc-200 bg-white py-3 focus:border-orange-600 focus:outline-none" />
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Nombre y apellido</label>
+                  <input
+                    type="text"
+                    required
+                    value={leadForm.name}
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, name: event.target.value }))}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
+                    placeholder="Tu nombre"
+                  />
                 </div>
+
                 <div>
-                  <label className="mb-2 block text-xs font-black uppercase tracking-widest text-zinc-400">Mensaje / Requerimiento</label>
-                  <textarea rows="4" className="w-full resize-none border-b-2 border-zinc-200 bg-white py-3 focus:border-orange-600 focus:outline-none" />
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Empresa / estudio</label>
+                  <input
+                    type="text"
+                    value={leadForm.company}
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, company: event.target.value }))}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
+                    placeholder="Opcional"
+                  />
                 </div>
-                <button className="w-full bg-orange-600 py-5 text-sm font-black uppercase tracking-widest text-white transition hover:bg-zinc-900">
-                  Enviar solicitud
-                </button>
+
+                <div>
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Teléfono o WhatsApp</label>
+                  <input
+                    type="tel"
+                    required
+                    value={leadForm.phone}
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, phone: event.target.value }))}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
+                    placeholder="Ej: +54 11 0000-0000"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Email</label>
+                  <input
+                    type="email"
+                    value={leadForm.email}
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, email: event.target.value }))}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
+                    placeholder="correo@empresa.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Tipo de obra</label>
+                  <select
+                    required
+                    value={leadForm.projectType}
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, projectType: event.target.value }))}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
+                  >
+                    <option value="">Seleccionar</option>
+                    {PROJECT_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Presupuesto estimado</label>
+                  <select
+                    required
+                    value={leadForm.budget}
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, budget: event.target.value }))}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
+                  >
+                    <option value="">Seleccionar</option>
+                    {BUDGET_RANGES.map((range) => (
+                      <option key={range} value={range}>
+                        {range}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Plazo de inicio</label>
+                  <select
+                    value={leadForm.timeline}
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, timeline: event.target.value }))}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
+                  >
+                    <option value="">Seleccionar</option>
+                    {TIMELINES.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Ubicación de la obra</label>
+                  <input
+                    type="text"
+                    value={leadForm.location}
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, location: event.target.value }))}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
+                    placeholder="Ciudad / barrio"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Superficie aproximada</label>
+                  <div className="relative">
+                    <Ruler className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="number"
+                      min="0"
+                      value={leadForm.surface}
+                      onChange={(event) => setLeadForm((prev) => ({ ...prev, surface: event.target.value }))}
+                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 pl-11 pr-4 outline-none transition focus:border-orange-500 focus:bg-white"
+                      placeholder="Metros cuadrados estimados"
+                    />
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Descripción breve</label>
+                  <textarea
+                    rows="4"
+                    value={leadForm.message}
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, message: event.target.value }))}
+                    className="w-full resize-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
+                    placeholder="Contanos qué necesitás y qué estás buscando resolver."
+                  />
+                </div>
+
+                <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row">
+                  <button type="submit" className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-zinc-900 px-6 py-4 text-sm font-black uppercase tracking-[0.25em] text-white transition hover:bg-orange-600">
+                    <Send className="h-4 w-4" />
+                    Pedir presupuesto
+                  </button>
+                  <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-zinc-200 px-6 py-4 text-sm font-black uppercase tracking-[0.25em] text-zinc-900 transition hover:border-orange-500 hover:text-orange-600">
+                    <MessageCircle className="h-4 w-4" />
+                    Consultar por WhatsApp
+                  </a>
+                </div>
               </form>
+
+              {leadResult && (
+                <div className="mt-8 rounded-[28px] border border-orange-100 bg-orange-50 p-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.35em] text-orange-600">Resultado del filtro</p>
+                      <h5 className="mt-2 text-2xl font-black uppercase italic text-zinc-900">{leadResult.status}</h5>
+                    </div>
+                    <div className="rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.25em] text-orange-600">{leadResult.score} puntos</div>
+                  </div>
+                  <p className="mt-4 text-sm leading-7 text-zinc-700">{leadResult.nextStep}</p>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-[0.25em] text-white transition hover:bg-orange-500">
+                      <MessageCircle className="h-4 w-4" />
+                      Responder por WhatsApp
+                    </a>
+                    <button type="button" onClick={() => goTo('proyectos')} className="inline-flex items-center gap-2 rounded-full border border-orange-200 px-5 py-3 text-xs font-black uppercase tracking-[0.25em] text-orange-700 transition hover:bg-white">
+                      Ver proyectos
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -259,7 +537,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
         </div>
       </footer>
 
-      <a href="https://wa.me/123456789" target="_blank" rel="noreferrer" className="fixed bottom-8 right-8 z-50 flex items-center justify-center rounded-full bg-green-500 p-4 text-white shadow-2xl transition-transform hover:scale-110">
+      <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="fixed bottom-8 right-8 z-50 flex items-center justify-center rounded-full bg-green-500 p-4 text-white shadow-2xl transition-transform hover:scale-110">
         <MessageCircle size={32} />
       </a>
     </div>

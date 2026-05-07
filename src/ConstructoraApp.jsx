@@ -8,6 +8,7 @@ import {
   Construction,
   DollarSign,
   Filter,
+  Image,
   LayoutDashboard,
   LogOut,
   Map as MapIcon,
@@ -15,11 +16,13 @@ import {
   Layers,
   QrCode,
   Search,
+  Upload,
   User,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import ProjectQrScanner from './components/ProjectQrScanner';
 import { hasSupabaseEnv, supabase } from './lib/supabaseClient';
+import { saveSiteContent, uploadSiteImage } from './lib/siteContentApi';
 import { defaultSiteContent } from './siteContent';
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0995/6432/3185/files/FILO.png?v=1775935955';
@@ -142,6 +145,59 @@ function StatCard({ label, value, detail }) {
         {detail && <p className="text-xs font-semibold text-emerald-700">{detail}</p>}
       </div>
     </Panel>
+  );
+}
+
+function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false, helpText = 'Pega una URL o sube una imagen.' }) {
+  const fileInputRef = React.useRef(null);
+
+  return (
+    <div>
+      <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">{label}</label>
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3">
+        <input
+          value={value}
+          onChange={onChange}
+          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white transition hover:bg-[#1F6B3F] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Upload size={14} />
+            {uploading ? 'Subiendo...' : 'Subir foto'}
+          </button>
+          <span className="text-[11px] text-slate-500">{helpText}</span>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (!file) return;
+            await onUpload(file);
+          }}
+        />
+        {value ? (
+          <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
+            <img src={value} alt={label} className="h-36 w-full object-cover" />
+          </div>
+        ) : (
+          <div className="flex h-36 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-slate-400">
+            <div className="text-center">
+              <Image className="mx-auto mb-2" size={24} />
+              <p className="text-xs font-semibold">Sin imagen</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 function LoginScreen({ onLogin, users, usersSource, usersError }) {
@@ -322,7 +378,7 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
     </div>
   );
 }
-export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteContentChange }) {
+export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteContentChange, siteContentSource }) {
   const [users, setUsers] = useState(FALLBACK_USERS);
   const [usersSource, setUsersSource] = useState('local');
   const [usersError, setUsersError] = useState('');
@@ -338,12 +394,41 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   const [attendanceMessage, setAttendanceMessage] = useState('');
   const [attendanceError, setAttendanceError] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [contentSyncState, setContentSyncState] = useState('idle');
+  const [contentSyncError, setContentSyncError] = useState('');
+  const [imageUploadingKey, setImageUploadingKey] = useState('');
   const content = siteContent || defaultSiteContent;
 
   const updateContent = (updater) => {
     if (!onSiteContentChange) return;
     onSiteContentChange((prev) => updater(prev || defaultSiteContent));
   };
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'admin') return;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setContentSyncState('saving');
+      try {
+        await saveSiteContent(content, currentUser.id);
+        if (!cancelled) {
+          setContentSyncState('saved');
+          setContentSyncError('');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setContentSyncState('error');
+          setContentSyncError(error.message || 'No se pudo sincronizar el contenido.');
+        }
+      }
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [content, currentUser?.id, currentUser?.role]);
 
   async function loadUsers() {
     if (!hasSupabaseEnv || !supabase) {
@@ -504,6 +589,26 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
       setEmployeeFormError(error.message || 'No se pudo crear el usuario.');
     } finally {
       setEmployeeFormLoading(false);
+    }
+  };
+
+  const handleUploadImage = async (fieldKey, applyUpdate, file) => {
+    if (!currentUser || currentUser.role !== 'admin') {
+      setContentSyncError('Solo un administrador puede subir imágenes.');
+      return;
+    }
+
+    setImageUploadingKey(fieldKey);
+    setContentSyncError('');
+    try {
+      const url = await uploadSiteImage(file, currentUser.id);
+      updateContent((prev) => applyUpdate(prev, url));
+      setContentSyncState('saved');
+    } catch (error) {
+      setContentSyncState('error');
+      setContentSyncError(error.message || 'No se pudo subir la imagen.');
+    } finally {
+      setImageUploadingKey('');
     }
   };
 
@@ -1014,18 +1119,28 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                   <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Panel tipo Shopify</p>
                   <h2 className="text-3xl font-bold tracking-tight text-slate-900">Contenido del sitio público</h2>
                 </div>
-                <Badge tone="green">Edición en vivo</Badge>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <Badge tone={siteContentSource === 'supabase' ? 'green' : 'amber'}>
+                    {siteContentSource === 'supabase' ? 'Supabase' : 'Local'}
+                  </Badge>
+                  <Badge tone={contentSyncState === 'error' ? 'red' : contentSyncState === 'saving' ? 'amber' : 'green'}>
+                    {contentSyncState === 'saving' ? 'Guardando' : contentSyncState === 'error' ? 'Error de sync' : 'En vivo'}
+                  </Badge>
+                </div>
               </div>
+              {contentSyncError && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{contentSyncError}</p>}
 
               <div className="grid gap-6 xl:grid-cols-12">
                 <Panel className="xl:col-span-5 space-y-5">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Marca</p>
-                    <label className="mt-3 block text-xs font-bold uppercase tracking-widest text-slate-500">Logo URL</label>
-                    <input
+                    <ImageFieldEditor
+                      label="Logo"
                       value={content.logoUrl}
                       onChange={(event) => updateContent((prev) => ({ ...prev, logoUrl: event.target.value }))}
-                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                      uploading={imageUploadingKey === 'logoUrl'}
+                      helpText="Ideal para el logo principal del sitio."
+                      onUpload={(file) => handleUploadImage('logoUrl', (prev, url) => ({ ...prev, logoUrl: url }), file)}
                     />
                   </div>
 
@@ -1059,11 +1174,13 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">Imagen principal</label>
-                    <input
+                    <ImageFieldEditor
+                      label="Imagen principal"
                       value={content.hero.image}
                       onChange={(event) => updateContent((prev) => ({ ...prev, hero: { ...prev.hero, image: event.target.value } }))}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                      uploading={imageUploadingKey === 'hero.image'}
+                      helpText="Sube una foto fuerte para la cabecera."
+                      onUpload={(file) => handleUploadImage('hero.image', (prev, url) => ({ ...prev, hero: { ...prev.hero, image: url } }), file)}
                     />
                   </div>
 
@@ -1125,7 +1242,8 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                             }
                             className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
                           />
-                          <input
+                          <ImageFieldEditor
+                            label={`Imagen del bloque ${index + 1}`}
                             value={item.image}
                             onChange={(event) =>
                               updateContent((prev) => ({
@@ -1133,7 +1251,18 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                                 highlights: prev.highlights.map((entry, i) => (i === index ? { ...entry, image: event.target.value } : entry)),
                               }))
                             }
-                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                            uploading={imageUploadingKey === `highlight-${index}`}
+                            helpText="Recomendado para mostrar una foto de obra."
+                            onUpload={(file) =>
+                              handleUploadImage(
+                                `highlight-${index}`,
+                                (prev, url) => ({
+                                  ...prev,
+                                  highlights: prev.highlights.map((entry, i) => (i === index ? { ...entry, image: url } : entry)),
+                                }),
+                                file
+                              )
+                            }
                           />
                         </div>
                       </div>
@@ -1154,16 +1283,30 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                           }
                           className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
                         />
-                        <input
-                          value={project.image}
-                          onChange={(event) =>
-                            updateContent((prev) => ({
-                              ...prev,
-                              projects: prev.projects.map((entry, i) => (i === index ? { ...entry, image: event.target.value } : entry)),
-                            }))
-                          }
-                          className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
-                        />
+                        <div className="mt-3">
+                          <ImageFieldEditor
+                            label={`Imagen del proyecto ${index + 1}`}
+                            value={project.image}
+                            onChange={(event) =>
+                              updateContent((prev) => ({
+                                ...prev,
+                                projects: prev.projects.map((entry, i) => (i === index ? { ...entry, image: event.target.value } : entry)),
+                              }))
+                            }
+                            uploading={imageUploadingKey === `project-${index}`}
+                            helpText="Sirve como imagen principal en el carrusel."
+                            onUpload={(file) =>
+                              handleUploadImage(
+                                `project-${index}`,
+                                (prev, url) => ({
+                                  ...prev,
+                                  projects: prev.projects.map((entry, i) => (i === index ? { ...entry, image: url } : entry)),
+                                }),
+                                file
+                              )
+                            }
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
