@@ -82,6 +82,26 @@ function buildLeadResult(form) {
   return { score, status, nextStep };
 }
 
+function buildLeadWhatsappLink(form) {
+  const message = [
+    'Hola FILO, quiero pedir presupuesto para una obra.',
+    '',
+    `Nombre: ${form.name || '-'}`,
+    `Empresa / estudio: ${form.company || '-'}`,
+    `Teléfono: ${form.phone || '-'}`,
+    `Email: ${form.email || '-'}`,
+    `Tipo de obra: ${form.projectType || '-'}`,
+    `Presupuesto estimado: ${form.budget || '-'}`,
+    `Plazo de inicio: ${form.timeline || '-'}`,
+    `Ubicación: ${form.location || '-'}`,
+    `Superficie aprox.: ${form.surface || 'No informada'}`,
+    '',
+    `Descripción: ${form.message || '-'}`,
+  ].join('\n');
+
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+}
+
 export default function PublicSite({ onEnterInternal, content = defaultSiteContent }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -123,6 +143,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
   const handleLeadSubmit = (event) => {
     event.preventDefault();
     setLeadResult(buildLeadResult(leadForm));
+    window.open(buildLeadWhatsappLink(leadForm), '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -186,10 +207,10 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
             </h1>
             <p className="max-w-2xl text-base leading-7 text-white/75 md:text-lg">{content.hero.subtitle}</p>
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <button onClick={() => goTo('proyectos')} className="bg-orange-600 px-10 py-5 text-sm font-black uppercase tracking-widest text-white transition hover:bg-white hover:text-zinc-900">
+              <button onClick={() => goTo('presupuesto')} className="bg-orange-600 px-10 py-5 text-sm font-black uppercase tracking-widest text-white transition hover:bg-white hover:text-zinc-900">
                 {content.hero.primaryCta}
               </button>
-              <button onClick={() => goTo('presupuesto')} className="border border-white/30 px-10 py-5 text-sm font-black uppercase tracking-widest text-white transition hover:bg-white/10">
+              <button onClick={() => goTo('proyectos')} className="border border-white/30 px-10 py-5 text-sm font-black uppercase tracking-widest text-white transition hover:bg-white/10">
                 {content.hero.secondaryCta}
               </button>
             </div>
@@ -344,7 +365,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-700">
                   <CalendarDays className="h-4 w-4" />
-                  Sin redirección automática
+                  WhatsApp con datos
                 </div>
               </div>
 
@@ -505,7 +526,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                   </div>
                   <p className="mt-4 text-sm leading-7 text-zinc-700">{leadResult.nextStep}</p>
                   <div className="mt-5 flex flex-wrap gap-3">
-                    <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-[0.25em] text-white transition hover:bg-orange-500">
+                    <a href={buildLeadWhatsappLink(leadForm)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-[0.25em] text-white transition hover:bg-orange-500">
                       <MessageCircle className="h-4 w-4" />
                       Responder por WhatsApp
                     </a>
