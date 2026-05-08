@@ -83,6 +83,49 @@ const SUPPLIES = [
   { name: 'Elementos de demarcacion', stock: 12, unit: 'u', status: 'OK' },
 ];
 
+const ROLE_DASHBOARDS = {
+  admin: {
+    badge: 'Panel administrador',
+    title: 'Control general de trabajos y equipo',
+    detail: 'Alta de personal, contenido publico, costos, asistencia e insumos.',
+    focus: ['Crear y revisar accesos del equipo', 'Validar asistencia por obra', 'Actualizar contenido del landing'],
+    tasks: [1, 2, 3, 4],
+    checklist: ['Variables y Supabase operativos', 'Equipo con QR activo', 'Contenido público actualizado'],
+  },
+  supervisor: {
+    badge: 'Panel supervisor',
+    title: 'Seguimiento de obra y cuadrilla',
+    detail: 'Avance, asistencia del equipo, insumos críticos y tareas de coordinación.',
+    focus: ['Revisar puntos de anclaje', 'Controlar avance y asistencia', 'Confirmar materiales antes de salir'],
+    tasks: [1, 2, 4],
+    checklist: ['Perímetro seguro', 'EPP revisado por cuadrilla', 'Fotos de avance registradas'],
+  },
+  tecnico_vertical: {
+    badge: 'Panel técnico vertical',
+    title: 'Tareas técnicas asignadas',
+    detail: 'Trabajo en altura, seguridad, materiales y registro de entrada/salida.',
+    focus: ['Revisar arnés y cuerda', 'Preparar selladores y herramientas', 'Registrar asistencia con QR de obra'],
+    tasks: [1, 2],
+    checklist: ['Arnés integral colocado', 'Línea de vida verificada', 'Herramientas aseguradas'],
+  },
+  operario: {
+    badge: 'Panel operario',
+    title: 'Tareas del turno',
+    detail: 'Indicaciones simples para asistencia, apoyo operativo y registro de fotos.',
+    focus: ['Marcar entrada y salida', 'Asistir al equipo vertical', 'Cargar fotos de avance si corresponde'],
+    tasks: [4],
+    checklist: ['EPP completo', 'Zona de trabajo despejada', 'Material preparado'],
+  },
+  administrativo: {
+    badge: 'Panel administrativo',
+    title: 'Administración y contenido',
+    detail: 'Costos, personal, documentación operativa y edición del sitio público.',
+    focus: ['Revisar costos del servicio', 'Mantener datos del equipo', 'Actualizar contenido comercial'],
+    tasks: [3, 4],
+    checklist: ['Presupuesto revisado', 'Datos del personal al día', 'Contenido público validado'],
+  },
+};
+
 function normalize(value) {
   return value.trim().toLowerCase();
 }
@@ -805,6 +848,9 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     acc[user.role] = (acc[user.role] || 0) + 1;
     return acc;
   }, {});
+  const roleDashboard = ROLE_DASHBOARDS[currentUser.role] || ROLE_DASHBOARDS.operario;
+  const roleTasks = TASKS.filter((task) => roleDashboard.tasks.includes(task.id));
+  const roleSupplies = currentUser.role === 'operario' ? SUPPLIES.slice(0, 4) : SUPPLIES;
   return (
     <div className="min-h-screen bg-[#f6f8f6] text-slate-900">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -874,22 +920,34 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
               <Panel className="lg:col-span-8">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <Badge tone="green">Resumen operativo</Badge>
-                    <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{selectedProject.name}</h2>
-                    <p className="mt-2 text-sm text-slate-500">{selectedProject.location} | {selectedProject.status}</p>
+                    <Badge tone="green">{roleDashboard.badge}</Badge>
+                    <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{roleDashboard.title}</h2>
+                    <p className="mt-2 text-sm text-slate-500">{roleDashboard.detail}</p>
                   </div>
                   <ArrowRight className="text-slate-300" />
                 </div>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <StatCard label="Avance" value={`${selectedProject.progress}%`} detail="Actualizado" />
-                  <StatCard label="Costo" value={selectedProject.budget} detail="Estimado" />
-                  <StatCard label="Equipo" value={(rolesSummary.tecnico_vertical || 0) + (rolesSummary.operario || 0)} detail="Activos" />
-                  <StatCard label="Asistencia" value={attendanceRecords.length} detail="Hoy" />
+                  <StatCard label="Obra asignada" value={selectedProject.id} detail={selectedProject.status} />
+                  <StatCard label="Turno" value={currentUser.shift.split('-')[0] || currentUser.shift} detail={currentUser.shift} />
+                  <StatCard label="Tareas" value={roleTasks.length} detail="Asignadas" />
+                  <StatCard label="Asistencia" value={attendanceRecords.length} detail="Registros" />
                 </div>
               </Panel>
 
               <Panel className="lg:col-span-4 bg-[#fbfcfb]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Foco del rol</p>
+                <div className="mt-4 space-y-3">
+                  {roleDashboard.focus.map((item) => (
+                    <div key={item} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                      <CheckSquare className="mt-0.5 text-[#1F6B3F]" size={18} />
+                      <p className="text-sm font-semibold text-slate-700">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+
+              <Panel className="lg:col-span-5 bg-[#fbfcfb]">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Acceso del trabajo</p>
                 <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 text-center">
                   <QRCodeSVG value={projectQrValue(selectedProject)} size={180} level="M" className="mx-auto" />
@@ -898,17 +956,17 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                 </div>
               </Panel>
 
-              <Panel className="lg:col-span-12">
+              <Panel className="lg:col-span-7">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Tareas del equipo</p>
-                    <h3 className="text-2xl font-bold tracking-tight text-slate-900">Verticales y mantenimiento</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Tareas visibles</p>
+                    <h3 className="text-2xl font-bold tracking-tight text-slate-900">Lo que te compete</h3>
                   </div>
-                  <Badge tone="neutral">{TASKS.length} tareas</Badge>
+                  <Badge tone="neutral">{roleTasks.length} tareas</Badge>
                 </div>
 
-                <div className="mt-5 grid gap-4 lg:grid-cols-3">
-                  {TASKS.map((task) => (
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  {roleTasks.map((task) => (
                     <div key={task.id} className="rounded-2xl border border-slate-200 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <Badge tone={task.status === 'terminada' ? 'green' : task.status === 'en proceso' ? 'amber' : 'neutral'}>{task.status}</Badge>
@@ -1230,11 +1288,11 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       Control rápido de seguridad, materiales y herramientas para pintura vertical, limpieza de vidrios, jardinería vertical y cartelería.
                     </p>
                   </div>
-                  <Badge tone="green">{SUPPLIES.length} items</Badge>
+                  <Badge tone="green">{roleSupplies.length} items</Badge>
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  {SUPPLIES.map((item) => (
+                  {roleSupplies.map((item) => (
                     <div key={item.name} className="rounded-2xl border border-slate-200 bg-[#fbfcfb] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="rounded-full bg-white p-2 text-[#1F6B3F] shadow-sm">
@@ -1255,6 +1313,24 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Checklist antes de salir</p>
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
                   {['EPP completo y revisado', 'Fotos de avance asignadas', 'Material cargado por servicio'].map((item) => (
+                    <div key={item} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                      <CheckSquare className="text-[#1F6B3F]" size={18} />
+                      <p className="text-sm font-semibold text-slate-700">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+
+              <Panel className="lg:col-span-12 bg-[#fbfcfb]">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Checklist del turno</p>
+                    <h3 className="text-2xl font-bold tracking-tight text-slate-900">Antes de operar</h3>
+                  </div>
+                  <Badge tone="green">{ROLE_LABELS[currentUser.role] || currentUser.role}</Badge>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {roleDashboard.checklist.map((item) => (
                     <div key={item} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
                       <CheckSquare className="text-[#1F6B3F]" size={18} />
                       <p className="text-sm font-semibold text-slate-700">{item}</p>
