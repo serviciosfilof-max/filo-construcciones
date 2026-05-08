@@ -1283,6 +1283,28 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                           }
                           className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
                         />
+                        <input
+                          value={project.tag || ''}
+                          onChange={(event) =>
+                            updateContent((prev) => ({
+                              ...prev,
+                              projects: prev.projects.map((entry, i) => (i === index ? { ...entry, tag: event.target.value } : entry)),
+                            }))
+                          }
+                          placeholder="Etiqueta del trabajo"
+                          className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        />
+                        <input
+                          value={project.videoUrl || ''}
+                          onChange={(event) =>
+                            updateContent((prev) => ({
+                              ...prev,
+                              projects: prev.projects.map((entry, i) => (i === index ? { ...entry, videoUrl: event.target.value } : entry)),
+                            }))
+                          }
+                          placeholder="Link de video opcional"
+                          className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        />
                         <div className="mt-3">
                           <ImageFieldEditor
                             label={`Imagen del proyecto ${index + 1}`}

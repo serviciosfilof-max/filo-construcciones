@@ -5,16 +5,20 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
+  Droplets,
+  Flower2,
   HardHat,
   Instagram,
   Layers,
   Menu,
   MessageCircle,
+  Paintbrush,
   Play,
   Ruler,
   Send,
   ShieldCheck,
   Sparkles,
+  Wrench,
   X,
 } from 'lucide-react';
 import { defaultSiteContent } from './siteContent';
@@ -25,19 +29,22 @@ function goTo(id, closeMenu) {
   if (closeMenu) closeMenu();
 }
 
-function ServiceCard({ icon: Icon, title, desc }) {
+function ServiceCard({ icon: Icon, title, desc, featured = false }) {
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-[#fbfcfb] p-8">
-      <Icon className="text-orange-600" size={28} />
+    <div className={`rounded-[28px] border p-8 ${featured ? 'border-orange-200 bg-orange-50' : 'border-slate-200 bg-[#fbfcfb]'}`}>
+      <div className={`flex h-12 w-12 items-center justify-center rounded-full ${featured ? 'bg-orange-600 text-white' : 'bg-white text-orange-600 shadow-sm'}`}>
+        <Icon size={24} />
+      </div>
+      {featured && <p className="mt-5 text-[10px] font-black uppercase tracking-[0.35em] text-orange-700">Servicio destacado</p>}
       <h4 className="mt-4 text-2xl font-bold text-zinc-900">{title}</h4>
-      <p className="mt-3 text-sm text-slate-500">{desc}</p>
+      <p className="mt-3 text-sm leading-7 text-slate-600">{desc}</p>
     </div>
   );
 }
 
 const WHATSAPP_NUMBER = '5491123010751';
 const WHATSAPP_TEXT = encodeURIComponent(
-  'Hola, vi la web de FILO y quiero pedir presupuesto para mi obra. Quiero que me orienten sobre alcance, tiempos y próxima etapa.'
+  'Hola FILO, vi la web y quiero pedir presupuesto por impermeabilización de terraza o fachada vertical.'
 );
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_TEXT}`;
 
@@ -54,9 +61,10 @@ const LEAD_DEFAULTS = {
   message: '',
 };
 
-const PROJECT_TYPES = ['Obra nueva', 'Refacción', 'Estructura / hormigón', 'Desarrollo comercial', 'Desarrollo industrial'];
-const BUDGET_RANGES = ['Menos de ARS 15M', 'ARS 15M a 50M', 'ARS 50M a 150M', 'Más de ARS 150M'];
-const TIMELINES = ['Inmediato', '30 a 60 días', '60 a 90 días', 'Más de 90 días'];
+const PROJECT_TYPES = ['Impermeabilización de terraza', 'Fachada vertical / altura', 'Pintura', 'Refacción', 'Jardines / exteriores', 'Construcción'];
+const BUDGET_RANGES = ['A definir tras visita', 'Menos de ARS 1M', 'ARS 1M a 3M', 'ARS 3M a 8M', 'Más de ARS 8M'];
+const TIMELINES = ['Urgente por filtración', 'Inmediato', 'Dentro de 30 días', 'Más adelante'];
+const SERVICE_ICONS = [Droplets, Building2, HardHat, Paintbrush, Wrench, Flower2, Layers];
 
 function buildLeadResult(form) {
   const surface = Number(form.surface) || 0;
@@ -84,17 +92,17 @@ function buildLeadResult(form) {
 
 function buildLeadWhatsappLink(form) {
   const message = [
-    'Hola FILO, quiero pedir presupuesto para una obra.',
+    'Hola FILO, quiero pedir presupuesto.',
     '',
     `Nombre: ${form.name || '-'}`,
     `Empresa / estudio: ${form.company || '-'}`,
     `Teléfono: ${form.phone || '-'}`,
     `Email: ${form.email || '-'}`,
-    `Tipo de obra: ${form.projectType || '-'}`,
+    `Servicio: ${form.projectType || '-'}`,
     `Presupuesto estimado: ${form.budget || '-'}`,
     `Plazo de inicio: ${form.timeline || '-'}`,
     `Ubicación: ${form.location || '-'}`,
-    `Superficie aprox.: ${form.surface || 'No informada'}`,
+    `Superficie aprox.: ${form.surface ? `${form.surface} m2` : 'No informada'}`,
     '',
     `Descripción: ${form.message || '-'}`,
   ].join('\n');
@@ -221,9 +229,9 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
       <section id="empresa" className="bg-white py-24">
         <div className="container mx-auto px-6">
           <div className="mb-16 text-center">
-            <h2 className="mb-4 text-5xl font-black uppercase italic text-zinc-900 md:text-7xl">Soluciones FILO</h2>
-            <div className="mx-auto h-2 w-20 bg-orange-600" />
-          </div>
+              <h2 className="mb-4 text-5xl font-black uppercase italic text-zinc-900 md:text-7xl">Servicios que hoy resolvemos</h2>
+              <div className="mx-auto h-2 w-20 bg-orange-600" />
+            </div>
           <div className="grid gap-10 md:grid-cols-3">
             {content.highlights.map((item) => (
               <div key={item.title} className="group overflow-hidden border border-zinc-100 bg-zinc-50 shadow-sm transition-all duration-500 hover:shadow-2xl">
@@ -252,8 +260,8 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
         <div className="container mx-auto px-6">
           <div className="mb-16 flex flex-col items-center justify-between md:flex-row">
             <div className="text-center md:text-left">
-              <span className="text-xs font-black uppercase tracking-widest text-orange-500">En Tiempo Real</span>
-              <h3 className="mt-2 text-5xl font-black uppercase italic">Nuestras Obras</h3>
+              <span className="text-xs font-black uppercase tracking-widest text-orange-500">Fotos y videos de trabajos reales</span>
+              <h3 className="mt-2 text-5xl font-black uppercase italic">Trabajos recientes</h3>
             </div>
             <button className="mt-8 flex items-center gap-3 border border-white/10 bg-white/5 px-6 py-3 transition hover:bg-white/10 md:mt-0">
               <Instagram className="text-orange-500" />
@@ -263,7 +271,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
 
           <div className="grid gap-6 md:grid-cols-4">
             {content.projects.map((project, index) => (
-              <div key={project.title} className="group relative aspect-[9/16] overflow-hidden rounded-lg bg-zinc-900">
+              <a key={project.title} href={project.videoUrl || WHATSAPP_LINK} target="_blank" rel="noreferrer" className="group relative aspect-[9/16] overflow-hidden rounded-lg bg-zinc-900">
                 <img src={project.image} className="h-full w-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-105" alt={project.title} />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-colors group-hover:bg-orange-600">
@@ -274,7 +282,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                   <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-orange-500">{project.tag || `PROYECTO 0${index + 1}`}</p>
                   <p className="text-lg font-bold uppercase italic">{project.title}</p>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </div>
@@ -282,10 +290,23 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
 
       <section id="servicios" className="bg-white py-24">
         <div className="container mx-auto px-6">
-          <div className="grid gap-6 md:grid-cols-3">
-            <ServiceCard icon={Building2} title={content.services[0].title} desc={content.services[0].desc} />
-            <ServiceCard icon={HardHat} title={content.services[1].title} desc={content.services[1].desc} />
-            <ServiceCard icon={Layers} title={content.services[2].title} desc={content.services[2].desc} />
+          <div className="mb-12 max-w-3xl">
+            <span className="text-xs font-black uppercase tracking-widest text-orange-600">Prioridad comercial</span>
+            <h3 className="mt-3 text-5xl font-black uppercase italic leading-none text-zinc-900 md:text-7xl">Impermeabilización primero</h3>
+            <p className="mt-5 text-base leading-7 text-slate-600">
+              Nos enfocamos en resolver filtraciones, humedades y mantenimiento de superficies expuestas. También tomamos pintura, refacciones, trabajos verticales, jardines y construcciones cuando el alcance lo requiere.
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {content.services.map((service, index) => (
+              <ServiceCard
+                key={service.title}
+                icon={SERVICE_ICONS[index % SERVICE_ICONS.length]}
+                title={service.title}
+                desc={service.desc}
+                featured={service.featured}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -298,9 +319,9 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
               <Sparkles className="h-3.5 w-3.5" />
               Filtro de presupuesto
             </span>
-            <h3 className="mt-5 text-5xl font-black uppercase italic leading-none md:text-7xl">Contanos tu obra y filtramos mejor</h3>
+            <h3 className="mt-5 text-5xl font-black uppercase italic leading-none md:text-7xl">Cotizá tu terraza o fachada</h3>
             <p className="mt-5 max-w-2xl text-base leading-7 text-white/70">
-              En vez de mandar todos los leads a WhatsApp, hacemos una precalificación acá mismo. Así respondemos mejor, ordenamos los presupuestos y evitamos chats que no encajan con el alcance.
+              Pedimos los datos justos para entender si hay filtraciones, humedad, altura, superficie y urgencia. Con eso respondemos por WhatsApp con más contexto y ordenamos mejor la visita o presupuesto.
             </p>
           </div>
 
@@ -310,16 +331,16 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                 <ShieldCheck className="h-5 w-5" />
                 Respuesta más ordenada
               </div>
-              <h4 className="mt-6 text-3xl font-black uppercase italic">No es un chat, es una pre-cotización</h4>
+              <h4 className="mt-6 text-3xl font-black uppercase italic">Ideal para impermeabilización</h4>
               <p className="mt-4 text-sm leading-7 text-white/70">
-                Pedimos pocos datos, pero los correctos. Con eso sabemos si el proyecto está listo para evaluar, si falta información o si conviene agendar una llamada.
+                Si hay goteras, humedad en paredes, fisuras o una fachada que necesita intervención, el formulario nos deja una primera lectura del trabajo antes de coordinar.
               </p>
 
               <div className="mt-8 space-y-4">
                 {[
-                  'Recibimos nombre, rubro, alcance y plazo antes de responder.',
-                  'Filtramos proyectos chicos, medios y grandes con el mismo formulario.',
-                  'WhatsApp queda como apoyo para responder sobre esta página, no como paso obligatorio.',
+                  'Priorizamos terrazas, balcones, medianeras y fachadas con filtraciones.',
+                  'Podés indicar superficie, ubicación y urgencia para acelerar la respuesta.',
+                  'El WhatsApp se abre con todos los datos cargados para no repetir información.',
                 ].map((item) => (
                   <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-orange-400" />
@@ -417,7 +438,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Tipo de obra</label>
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Servicio</label>
                   <select
                     required
                     value={leadForm.projectType}
@@ -487,7 +508,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                       value={leadForm.surface}
                       onChange={(event) => setLeadForm((prev) => ({ ...prev, surface: event.target.value }))}
                       className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 pl-11 pr-4 outline-none transition focus:border-orange-500 focus:bg-white"
-                      placeholder="Metros cuadrados estimados"
+                      placeholder="Metros cuadrados aproximados"
                     />
                   </div>
                 </div>
@@ -499,7 +520,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                     value={leadForm.message}
                     onChange={(event) => setLeadForm((prev) => ({ ...prev, message: event.target.value }))}
                     className="w-full resize-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
-                    placeholder="Contanos qué necesitás y qué estás buscando resolver."
+                    placeholder="Ej: terraza con filtraciones, fachada con grietas, humedad en techo, pintura exterior, refacción, jardín."
                   />
                 </div>
 
