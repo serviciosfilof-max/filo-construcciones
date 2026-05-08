@@ -255,6 +255,7 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
   const [qrValue, setQrValue] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
 
   const byCredentials = useMemo(() => {
     const map = new Map();
@@ -282,13 +283,21 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
     }
   };
 
+  const loginWithQrValue = (value) => {
+    setError('');
+    const matched = byQr.get(value.trim());
+    if (!matched) throw new Error('QR invalido. Usa un codigo activo de personal.');
+    if (matched.role === 'admin') throw new Error('El administrador debe ingresar con contraseña.');
+    onLogin(matched);
+  };
+
   const submitQr = (event) => {
     event.preventDefault();
-    setError('');
-    const matched = byQr.get(qrValue.trim());
-    if (!matched) return setError('QR invalido. Usa un codigo activo de personal.');
-    if (matched.role === 'admin') return setError('El administrador debe ingresar con contraseña.');
-    onLogin(matched);
+    try {
+      loginWithQrValue(qrValue);
+    } catch (qrError) {
+      setError(qrError.message || 'No se pudo validar el QR.');
+    }
   };
 
   return (
@@ -408,7 +417,26 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
             </form>
           ) : (
             <form onSubmit={submitQr} className="mt-8 space-y-4">
-              <p className="text-sm text-slate-500">Pegá el contenido del QR de usuario si no estás usando cámara.</p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-slate-500">Escaneá el QR de usuario o pegá su contenido.</p>
+                <button
+                  type="button"
+                  onClick={() => setQrScannerOpen((value) => !value)}
+                  className="rounded-full border border-slate-200 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-600 transition hover:border-[#1F6B3F] hover:text-[#1F6B3F]"
+                >
+                  {qrScannerOpen ? 'Cerrar camara' : 'Abrir camara'}
+                </button>
+              </div>
+              {qrScannerOpen && (
+                <ProjectQrScanner
+                  description="Apunta al QR de ingreso del usuario."
+                  onClose={() => setQrScannerOpen(false)}
+                  onScan={async (decodedText) => {
+                    setQrValue(decodedText);
+                    loginWithQrValue(decodedText);
+                  }}
+                />
+              )}
               <textarea
                 required
                 value={qrValue}
@@ -1147,6 +1175,12 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       </div>
                       <p className="mt-4 text-xs text-slate-500">{user.email}</p>
                       <p className="mt-1 text-xs text-slate-500">Turno {user.shift}</p>
+                      {user.role !== 'admin' && (
+                        <div className="mt-4 rounded-2xl border border-slate-200 bg-[#fbfcfb] p-3 text-center">
+                          <QRCodeSVG value={userQrValue(user)} size={104} level="M" className="mx-auto" />
+                          <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">QR de ingreso</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

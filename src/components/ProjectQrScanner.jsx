@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
-export default function ProjectQrScanner({ onScan, onClose }) {
+export default function ProjectQrScanner({ onScan, onClose, description = 'Apunta al QR de la obra para registrar entrada o salida.' }) {
   const containerId = useRef(`qr-reader-${Math.random().toString(36).slice(2, 9)}`);
   const scannerRef = useRef(null);
   const onScanRef = useRef(onScan);
@@ -51,7 +51,7 @@ export default function ProjectQrScanner({ onScan, onClose }) {
             Camara activa
           </p>
           <p className="text-sm text-zinc-500">
-            Apunta al QR de la obra para registrar entrada o salida.
+            {description}
           </p>
         </div>
         <button
