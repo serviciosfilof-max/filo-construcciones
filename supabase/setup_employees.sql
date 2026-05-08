@@ -1,7 +1,7 @@
 create table if not exists public.employees (
   employee_id text primary key,
   full_name text not null,
-  role text not null check (role in ('admin', 'arquitecto', 'capataz', 'obrero')),
+  role text not null check (role in ('admin', 'supervisor', 'tecnico_vertical', 'operario', 'administrativo')),
   shift text not null,
   email text not null unique,
   avatar_url text,
@@ -10,6 +10,13 @@ create table if not exists public.employees (
 );
 
 alter table public.employees enable row level security;
+
+alter table public.employees
+drop constraint if exists employees_role_check;
+
+alter table public.employees
+add constraint employees_role_check
+check (role in ('admin', 'supervisor', 'tecnico_vertical', 'operario', 'administrativo'));
 
 drop policy if exists "Allow public read employees for demo" on public.employees;
 create policy "Allow public read employees for demo"
@@ -39,4 +46,5 @@ set
   qr_code = excluded.qr_code;
 
 delete from public.employees
-where employee_id in ('ARQ-001', 'CAP-042', 'OBR-105');
+where employee_id in ('ARQ-001', 'CAP-042', 'OBR-105')
+   or role in ('arquitecto', 'capataz', 'obrero');

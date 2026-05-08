@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const ALLOWED_ROLES = new Set(['arquitecto', 'capataz', 'obrero']);
+const ALLOWED_ROLES = new Set(['supervisor', 'tecnico_vertical', 'operario', 'administrativo']);
 
 function send(res, status, payload) {
   res.status(status).json(payload);

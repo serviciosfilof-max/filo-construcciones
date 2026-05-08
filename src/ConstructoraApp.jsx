@@ -28,11 +28,26 @@ import { defaultSiteContent } from './siteContent';
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0995/6432/3185/files/FILO.png?v=1775935955';
 const SESSION_KEY = 'construtrack_session_v1';
-const EMPLOYEE_ROLES = ['arquitecto', 'capataz', 'obrero'];
+const EMPLOYEE_ROLES = [
+  { value: 'supervisor', label: 'Supervisor de cuadrilla' },
+  { value: 'tecnico_vertical', label: 'Técnico vertical' },
+  { value: 'operario', label: 'Operario / ayudante' },
+  { value: 'administrativo', label: 'Administrativo' },
+];
+const ROLE_LABELS = {
+  admin: 'Administrador',
+  supervisor: 'Supervisor de cuadrilla',
+  tecnico_vertical: 'Técnico vertical',
+  operario: 'Operario / ayudante',
+  administrativo: 'Administrativo',
+  arquitecto: 'Arquitecto',
+  capataz: 'Capataz',
+  obrero: 'Obrero',
+};
 const EMPLOYEE_FORM_DEFAULTS = {
   employee_id: '',
   full_name: '',
-  role: 'obrero',
+  role: 'tecnico_vertical',
   shift: '',
   email: '',
   avatar_url: '',
@@ -48,9 +63,6 @@ const PROJECTS = [
 
 const FALLBACK_USERS = [
   { id: 'ADM-001', name: 'Administrador Filo', role: 'admin', shift: '07:00-17:00', email: 'admin@filo.local', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', qrCode: null },
-  { id: 'ARQ-001', name: 'Arq. Roberto Solis', role: 'arquitecto', shift: '07:00-15:00', email: 'roberto.solis@construtrack.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Roberto', qrCode: null },
-  { id: 'CAP-042', name: 'Juan Perez', role: 'capataz', shift: '08:00-17:00', email: 'juan.perez@construtrack.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Juan', qrCode: null },
-  { id: 'OBR-105', name: 'Miguel Angel', role: 'obrero', shift: '09:00-18:00', email: 'miguel.angel@construtrack.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Miguel', qrCode: null },
 ];
 
 const TASKS = [
@@ -186,6 +198,9 @@ function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false,
           </button>
           <span className="text-[11px] text-slate-500">{helpText}</span>
         </div>
+        <p className="text-[11px] leading-5 text-slate-400">
+          Al subir un archivo, se guarda en Supabase Storage y esta URL se completa sola.
+        </p>
         <input
           ref={fileInputRef}
           type="file"
@@ -384,7 +399,7 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
                 required
                 value={qrValue}
                 onChange={(event) => setQrValue(event.target.value)}
-                placeholder="CTLOGIN|OBR-105|miguel.angel@construtrack.com|obrero"
+                placeholder="CTLOGIN|TEC-001|tecnico@filo.com|tecnico_vertical"
                 className="min-h-24 w-full resize-none rounded-2xl border border-slate-200 p-4 text-xs outline-none"
               />
               <button type="submit" className="w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-95">
@@ -617,21 +632,27 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     }
   };
 
-  const handleUploadMedia = async (fieldKey, applyUpdate, file) => {
+  const handleUploadMedia = async (fieldKey, applyUpdate, file, { setGlobalError = true } = {}) => {
     if (!currentUser || currentUser.role !== 'admin') {
-      setContentSyncError('Solo un administrador puede subir archivos.');
+      if (setGlobalError) setContentSyncError('Solo un administrador puede subir archivos.');
+      else setEmployeeFormError('Solo un administrador puede subir archivos.');
       return;
     }
 
     setImageUploadingKey(fieldKey);
-    setContentSyncError('');
+    if (setGlobalError) setContentSyncError('');
+    else setEmployeeFormError('');
     try {
       const url = await uploadSiteImage(file, currentUser.id, currentAdminPassword);
       updateContent((prev) => applyUpdate(prev, url));
-      setContentSyncState('saved');
+      if (setGlobalError) setContentSyncState('saved');
     } catch (error) {
-      setContentSyncState('error');
-      setContentSyncError(error.message || 'No se pudo subir la imagen.');
+      if (setGlobalError) {
+        setContentSyncState('error');
+        setContentSyncError(error.message || 'No se pudo subir el archivo.');
+      } else {
+        setEmployeeFormError(error.message || 'No se pudo subir el archivo.');
+      }
     } finally {
       setImageUploadingKey('');
     }
@@ -725,16 +746,15 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     { id: 'inicio', icon: LayoutDashboard, label: 'Inicio' },
     { id: 'obras', icon: Construction, label: 'Obras' },
     { id: 'asistencia', icon: QrCode, label: 'Asistencia' },
-    { id: 'personal', icon: User, label: 'Personal', role: 'capataz' },
-    { id: 'finanzas', icon: DollarSign, label: 'Costos', role: 'arquitecto' },
-    { id: 'insumos', icon: PackageCheck, label: 'Insumos', role: 'capataz' },
-    { id: 'contenido', icon: Layers, label: 'Contenido', role: 'arquitecto' },
+    { id: 'personal', icon: User, label: 'Personal', roles: ['supervisor', 'administrativo'] },
+    { id: 'finanzas', icon: DollarSign, label: 'Costos', roles: ['supervisor', 'administrativo'] },
+    { id: 'insumos', icon: PackageCheck, label: 'Insumos', roles: ['supervisor', 'tecnico_vertical', 'administrativo'] },
+    { id: 'contenido', icon: Layers, label: 'Contenido', roles: ['supervisor', 'administrativo'] },
   ].filter(
     (item) =>
-      !item.role ||
       currentUser.role === 'admin' ||
-      item.role === currentUser.role ||
-      (currentUser.role === 'arquitecto' && item.role === 'capataz')
+      !item.roles ||
+      item.roles.includes(currentUser.role)
   );
 
   const rolesSummary = users.reduce((acc, user) => {
@@ -778,7 +798,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-900">{currentUser.name}</p>
-              <p className="text-[10px] uppercase tracking-widest text-slate-400">{currentUser.role}</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-400">{ROLE_LABELS[currentUser.role] || currentUser.role}</p>
             </div>
           </div>
 
@@ -797,9 +817,9 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
           <div className="mt-4 rounded-2xl border border-slate-200 p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Resumen equipo</p>
             <div className="mt-3 space-y-2 text-sm text-slate-600">
-              <p>Arquitectos: {rolesSummary.arquitecto || 0}</p>
-              <p>Capataces: {rolesSummary.capataz || 0}</p>
-              <p>Obreros: {rolesSummary.obrero || 0}</p>
+              <p>Supervisores: {rolesSummary.supervisor || 0}</p>
+              <p>Técnicos verticales: {rolesSummary.tecnico_vertical || 0}</p>
+              <p>Operarios: {rolesSummary.operario || 0}</p>
             </div>
           </div>
         </aside>
@@ -820,7 +840,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <StatCard label="Avance" value={`${selectedProject.progress}%`} detail="Actualizado" />
                   <StatCard label="Costo" value={selectedProject.budget} detail="Estimado" />
-                  <StatCard label="Equipo" value={rolesSummary.obrero || 0} detail="Activos" />
+                  <StatCard label="Equipo" value={(rolesSummary.tecnico_vertical || 0) + (rolesSummary.operario || 0)} detail="Activos" />
                   <StatCard label="Asistencia" value={attendanceRecords.length} detail="Hoy" />
                 </div>
               </Panel>
@@ -982,7 +1002,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#1F6B3F]">Alta de personal</p>
                         <h3 className="mt-1 text-xl font-bold text-slate-900">Crear acceso para el equipo</h3>
-                        <p className="mt-2 text-sm text-slate-500">Solo el administrador puede dar de alta arquitectos, capataces y obreros.</p>
+                        <p className="mt-2 text-sm text-slate-500">Solo el administrador puede dar de alta supervisores, técnicos verticales, operarios y administrativos.</p>
                       </div>
                       <Badge tone="green">Admin</Badge>
                     </div>
@@ -1030,8 +1050,8 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                           className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
                         >
                           {EMPLOYEE_ROLES.map((role) => (
-                            <option key={role} value={role}>
-                              {role}
+                            <option key={role.value} value={role.value}>
+                              {role.label}
                             </option>
                           ))}
                         </select>
@@ -1048,13 +1068,24 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                         />
                       </div>
 
-                      <div>
-                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Avatar URL</label>
-                        <input
+                      <div className="xl:col-span-2">
+                        <ImageFieldEditor
+                          label="Foto / avatar del usuario"
                           value={employeeForm.avatar_url}
                           onChange={(event) => setEmployeeForm((prev) => ({ ...prev, avatar_url: event.target.value }))}
-                          placeholder="https://..."
-                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                          uploading={imageUploadingKey === 'employee-avatar'}
+                          helpText="Subí una foto desde el celular del admin o pegá una URL."
+                          onUpload={(file) =>
+                            handleUploadMedia(
+                              'employee-avatar',
+                              (prev, url) => {
+                                setEmployeeForm((current) => ({ ...current, avatar_url: url }));
+                                return prev;
+                              },
+                              file,
+                              { setGlobalError: false }
+                            )
+                          }
                         />
                       </div>
 
@@ -1094,7 +1125,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                         </div>
                         <div>
                           <p className="font-semibold text-slate-900">{user.name}</p>
-                          <p className="text-[10px] uppercase tracking-widest text-slate-400">{user.role}</p>
+                          <p className="text-[10px] uppercase tracking-widest text-slate-400">{ROLE_LABELS[user.role] || user.role}</p>
                         </div>
                       </div>
                       <p className="mt-4 text-xs text-slate-500">{user.email}</p>
