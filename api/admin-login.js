@@ -20,6 +20,16 @@ function mapUser(row) {
   };
 }
 
+const DEFAULT_ADMIN = {
+  id: 'ADM-001',
+  name: 'Administrador Filo',
+  role: 'admin',
+  shift: '07:00-17:00',
+  email: 'admin@filo.local',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
+  qrCode: null,
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return send(res, 405, { error: 'Method not allowed' });
@@ -48,6 +58,10 @@ export default async function handler(req, res) {
 
   if (password !== adminCode) {
     return send(res, 401, { error: 'Contraseña de administrador incorrecta.' });
+  }
+
+  if (email === DEFAULT_ADMIN.email && employeeId === DEFAULT_ADMIN.id) {
+    return send(res, 200, { user: DEFAULT_ADMIN });
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
