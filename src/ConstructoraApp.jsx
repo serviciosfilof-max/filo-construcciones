@@ -529,6 +529,9 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   const [employeeFormMessage, setEmployeeFormMessage] = useState('');
   const [employeeFormError, setEmployeeFormError] = useState('');
   const [employeeFormLoading, setEmployeeFormLoading] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [editEmployeeForm, setEditEmployeeForm] = useState(EMPLOYEE_FORM_DEFAULTS);
+  const [editEmployeeLoading, setEditEmployeeLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState(PROJECTS[0]);
   const [activeTab, setActiveTab] = useState('inicio');
   const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -758,6 +761,60 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
       }
     } finally {
       setImageUploadingKey('');
+    }
+  };
+
+  const startEditingEmployee = (user) => {
+    if (currentUser.role !== 'admin' || user.role === 'admin') return;
+    setEmployeeFormMessage('');
+    setEmployeeFormError('');
+    setEditingEmployee(user);
+    setEditEmployeeForm({
+      employee_id: user.id,
+      full_name: user.name,
+      role: user.role,
+      shift: user.shift,
+      email: user.email,
+      avatar_url: user.avatar?.includes('dicebear.com') ? '' : user.avatar,
+      password: '',
+      admin_code: '',
+    });
+  };
+
+  const handleUpdateEmployee = async (event) => {
+    event.preventDefault();
+    if (!editingEmployee) return;
+
+    setEmployeeFormMessage('');
+    setEmployeeFormError('');
+    setEditEmployeeLoading(true);
+    try {
+      const cleanedAvatarUrl = normalizeOptionalMediaUrl(editEmployeeForm.avatar_url);
+      const response = await fetch('/api/employees', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...editEmployeeForm,
+          avatar_url: cleanedAvatarUrl,
+          admin_code: currentAdminPassword || editEmployeeForm.admin_code,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || 'No se pudo actualizar el usuario.');
+      }
+
+      await loadUsers();
+      setEditingEmployee(null);
+      setEditEmployeeForm(EMPLOYEE_FORM_DEFAULTS);
+      setEmployeeFormMessage(`Usuario ${payload.employee?.employee_id || editingEmployee.id} actualizado correctamente.`);
+    } catch (error) {
+      setEmployeeFormError(error.message || 'No se pudo actualizar el usuario.');
+    } finally {
+      setEditEmployeeLoading(false);
     }
   };
 
@@ -1260,12 +1317,70 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
 
                     {employeeFormMessage && <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{employeeFormMessage}</p>}
                     {employeeFormError && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{employeeFormError}</p>}
+
+                    {editingEmployee && (
+                      <form onSubmit={handleUpdateEmployee} className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#1F6B3F]">Editar personal</p>
+                            <h3 className="mt-1 text-xl font-bold text-slate-900">{editingEmployee.name}</h3>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditingEmployee(null)}
+                            className="rounded-full border border-slate-200 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500"
+                          >
+                            Cerrar
+                          </button>
+                        </div>
+
+                        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                          <div>
+                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">ID de personal</label>
+                            <input disabled value={editEmployeeForm.employee_id} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500" />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Nombre completo</label>
+                            <input required value={editEmployeeForm.full_name} onChange={(event) => setEditEmployeeForm((prev) => ({ ...prev, full_name: event.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Correo</label>
+                            <input type="email" required value={editEmployeeForm.email} onChange={(event) => setEditEmployeeForm((prev) => ({ ...prev, email: event.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Rol</label>
+                            <select value={editEmployeeForm.role} onChange={(event) => setEditEmployeeForm((prev) => ({ ...prev, role: event.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
+                              {EMPLOYEE_ROLES.map((role) => (
+                                <option key={role.value} value={role.value}>{role.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Turno</label>
+                            <input required value={editEmployeeForm.shift} onChange={(event) => setEditEmployeeForm((prev) => ({ ...prev, shift: event.target.value }))} placeholder="07:00-15:00" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Nueva clave</label>
+                            <input type="password" minLength={4} value={editEmployeeForm.password} onChange={(event) => setEditEmployeeForm((prev) => ({ ...prev, password: event.target.value }))} placeholder="Opcional" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                          </div>
+                        </div>
+
+                        <button disabled={editEmployeeLoading} type="submit" className="mt-5 w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60">
+                          {editEmployeeLoading ? 'Guardando...' : 'Guardar cambios'}
+                        </button>
+                      </form>
+                    )}
                   </div>
                 )}
 
                 <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {users.map((user) => (
-                    <div key={user.id} className="rounded-2xl border border-slate-200 p-4">
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => startEditingEmployee(user)}
+                      className={`rounded-2xl border border-slate-200 p-4 text-left ${currentUser.role === 'admin' && user.role !== 'admin' ? 'transition hover:border-[#1F6B3F] hover:shadow-md' : ''}`}
+                    >
                       <div className="flex items-center gap-3">
                         <div className="h-12 w-12 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-0.5">
                           <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
@@ -1277,7 +1392,10 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       </div>
                       <p className="mt-4 text-xs text-slate-500">{user.email}</p>
                       <p className="mt-1 text-xs text-slate-500">Turno {user.shift}</p>
-                    </div>
+                      {currentUser.role === 'admin' && user.role !== 'admin' && (
+                        <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-[#1F6B3F]">Tocar para editar</p>
+                      )}
+                    </button>
                   ))}
                 </div>
               </Panel>

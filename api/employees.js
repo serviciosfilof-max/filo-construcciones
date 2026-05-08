@@ -21,8 +21,8 @@ function normalizeOptionalUrl(value) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
+  if (!['POST', 'PATCH'].includes(req.method)) {
+    res.setHeader('Allow', ['POST', 'PATCH']);
     return send(res, 405, { error: 'Method not allowed' });
   }
 
@@ -49,11 +49,11 @@ export default async function handler(req, res) {
   const avatar_url = normalizeOptionalUrl(body.avatar_url);
   const password = normalizeText(body.password);
 
-  if (!employee_id || !full_name || !role || !shift || !email || !password) {
+  if (!employee_id || !full_name || !role || !shift || !email || (req.method === 'POST' && !password)) {
     return send(res, 400, { error: 'Missing required employee fields.' });
   }
 
-  if (password.length < 4) {
+  if (password && password.length < 4) {
     return send(res, 400, { error: 'La clave del empleado debe tener al menos 4 caracteres.' });
   }
 
@@ -62,6 +62,19 @@ export default async function handler(req, res) {
   }
 
   const qr_code = body.qr_code ? normalizeText(body.qr_code) : `CTLOGIN|${employee_id}|${email}|${role}`;
+  const employeePayload = {
+    employee_id,
+    full_name,
+    role,
+    shift,
+    email,
+    avatar_url: avatar_url || null,
+    qr_code,
+  };
+
+  if (password) {
+    employeePayload.password_hash = hashPassword(password);
+  }
 
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
@@ -73,16 +86,7 @@ export default async function handler(req, res) {
   const { data, error } = await supabase
     .from('employees')
     .upsert(
-      {
-        employee_id,
-        full_name,
-        role,
-        shift,
-        email,
-        avatar_url: avatar_url || null,
-        password_hash: hashPassword(password),
-        qr_code,
-      },
+      employeePayload,
       { onConflict: 'employee_id' }
     )
     .select('employee_id, full_name, role, shift, email, avatar_url, qr_code')
