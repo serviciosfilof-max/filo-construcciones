@@ -295,20 +295,14 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
   const [email, setEmail] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
-  const [qrValue, setQrValue] = useState('');
+  const [staffEmail, setStaffEmail] = useState('');
+  const [staffEmployeeId, setStaffEmployeeId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [qrScannerOpen, setQrScannerOpen] = useState(false);
 
   const byCredentials = useMemo(() => {
     const map = new Map();
     users.forEach((user) => map.set(`${normalize(user.email)}|${normalize(user.id)}`, user));
-    return map;
-  }, [users]);
-
-  const byQr = useMemo(() => {
-    const map = new Map();
-    users.forEach((user) => map.set(userQrValue(user), user));
     return map;
   }, [users]);
 
@@ -326,21 +320,13 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
     }
   };
 
-  const loginWithQrValue = (value) => {
-    setError('');
-    const matched = byQr.get(value.trim());
-    if (!matched) throw new Error('QR invalido. Usa un codigo activo de personal.');
-    if (matched.role === 'admin') throw new Error('El administrador debe ingresar con contraseña.');
-    onLogin(matched);
-  };
-
-  const submitQr = (event) => {
+  const submitStaffAccess = (event) => {
     event.preventDefault();
-    try {
-      loginWithQrValue(qrValue);
-    } catch (qrError) {
-      setError(qrError.message || 'No se pudo validar el QR.');
-    }
+    setError('');
+    const matched = byCredentials.get(`${normalize(staffEmail)}|${normalize(staffEmployeeId)}`);
+    if (!matched) return setError('No encontre ese acceso de personal. Revisa correo e ID.');
+    if (matched.role === 'admin') return setError('El administrador debe ingresar desde Admin con contraseña.');
+    onLogin(matched);
   };
 
   return (
@@ -389,11 +375,11 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
             <button
               onClick={() => {
                 setError('');
-                setMode('qr');
+                setMode('staff');
               }}
-              className={`w-full rounded-full px-4 py-3 text-xs font-bold uppercase tracking-widest ${mode === 'qr' ? 'bg-[#1F6B3F] text-white' : 'text-slate-500 hover:text-slate-900'}`}
+              className={`w-full rounded-full px-4 py-3 text-xs font-bold uppercase tracking-widest ${mode === 'staff' ? 'bg-[#1F6B3F] text-white' : 'text-slate-500 hover:text-slate-900'}`}
             >
-              Ingreso por QR
+              Personal
             </button>
           </div>
 
@@ -459,36 +445,37 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
               </button>
             </form>
           ) : (
-            <form onSubmit={submitQr} className="mt-8 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-slate-500">Escaneá el QR de usuario o pegá su contenido.</p>
-                <button
-                  type="button"
-                  onClick={() => setQrScannerOpen((value) => !value)}
-                  className="rounded-full border border-slate-200 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-600 transition hover:border-[#1F6B3F] hover:text-[#1F6B3F]"
-                >
-                  {qrScannerOpen ? 'Cerrar camara' : 'Abrir camara'}
-                </button>
+            <form onSubmit={submitStaffAccess} className="mt-8 space-y-4">
+              <p className="text-sm text-slate-500">El personal entra a su panel con el correo y el ID que le creo el administrador.</p>
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Correo</label>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+                  <Mail size={16} className="text-slate-400" />
+                  <input
+                    type="email"
+                    required
+                    value={staffEmail}
+                    onChange={(event) => setStaffEmail(event.target.value)}
+                    placeholder="persona@filo.com"
+                    className="w-full bg-transparent text-sm outline-none"
+                  />
+                </div>
               </div>
-              {qrScannerOpen && (
-                <ProjectQrScanner
-                  description="Apunta al QR de ingreso del usuario."
-                  onClose={() => setQrScannerOpen(false)}
-                  onScan={async (decodedText) => {
-                    setQrValue(decodedText);
-                    loginWithQrValue(decodedText);
-                  }}
-                />
-              )}
-              <textarea
-                required
-                value={qrValue}
-                onChange={(event) => setQrValue(event.target.value)}
-                placeholder="CTLOGIN|TEC-001|tecnico@filo.com|tecnico_vertical"
-                className="min-h-24 w-full resize-none rounded-2xl border border-slate-200 p-4 text-xs outline-none"
-              />
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">ID de personal</label>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+                  <BadgeCheck size={16} className="text-slate-400" />
+                  <input
+                    required
+                    value={staffEmployeeId}
+                    onChange={(event) => setStaffEmployeeId(event.target.value)}
+                    placeholder="TEC-002"
+                    className="w-full bg-transparent text-sm uppercase outline-none"
+                  />
+                </div>
+              </div>
               <button type="submit" className="w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-95">
-                Validar QR y entrar
+                Entrar al panel
               </button>
             </form>
           )}
@@ -1233,12 +1220,6 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       </div>
                       <p className="mt-4 text-xs text-slate-500">{user.email}</p>
                       <p className="mt-1 text-xs text-slate-500">Turno {user.shift}</p>
-                      {user.role !== 'admin' && (
-                        <div className="mt-4 rounded-2xl border border-slate-200 bg-[#fbfcfb] p-3 text-center">
-                          <QRCodeSVG value={userQrValue(user)} size={104} level="M" className="mx-auto" />
-                          <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">QR de ingreso</p>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
