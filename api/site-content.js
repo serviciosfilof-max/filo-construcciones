@@ -1,14 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { defaultSiteContent } from '../src/siteContent.js';
+import { getSupabaseUrl, normalizeText } from './_supabase.js';
 
 const SITE_CONTENT_ID = 'main';
 
 function send(res, status, payload) {
   res.status(status).json(payload);
-}
-
-function normalizeText(value) {
-  return typeof value === 'string' ? value.trim() : '';
 }
 
 function normalizeContent(input) {
@@ -63,7 +60,7 @@ function ensureAdminPassword(password) {
 }
 
 export default async function handler(req, res) {
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseUrl = getSupabaseUrl();
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getSupabaseUrl, normalizeText } from './_supabase.js';
 
 const BUCKET = 'site-assets';
 const MAX_FILE_SIZE_BYTES = 80 * 1024 * 1024;
@@ -6,10 +7,6 @@ const ALLOWED_MIME_PREFIXES = ['image/', 'video/'];
 
 function send(res, status, payload) {
   res.status(status).json(payload);
-}
-
-function normalizeText(value) {
-  return typeof value === 'string' ? value.trim() : '';
 }
 
 function slugify(value) {
@@ -64,7 +61,7 @@ export default async function handler(req, res) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseUrl = getSupabaseUrl();
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {

@@ -1,11 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
+import { getSupabaseUrl, normalizeText } from './_supabase.js';
 
 function send(res, status, payload) {
   res.status(status).json(payload);
-}
-
-function normalizeText(value) {
-  return typeof value === 'string' ? value.trim() : '';
 }
 
 function mapUser(row) {
@@ -35,7 +32,7 @@ export default async function handler(req, res) {
     return send(res, 405, { error: 'Method not allowed' });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseUrl = getSupabaseUrl();
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const adminCode = normalizeText(process.env.ADMIN_CREATE_CODE);
 
