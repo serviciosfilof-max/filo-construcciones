@@ -38,40 +38,5 @@ set
   avatar_url = excluded.avatar_url,
   qr_code = excluded.qr_code;
 
-insert into public.employees (employee_id, full_name, role, shift, email, avatar_url, qr_code)
-values
-  (
-    'ARQ-001',
-    'Arq. Roberto Solis',
-    'arquitecto',
-    '07:00-15:00',
-    'roberto.solis@construtrack.com',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Roberto',
-    'CTLOGIN|ARQ-001|roberto.solis@construtrack.com|arquitecto'
-  ),
-  (
-    'CAP-042',
-    'Juan Perez',
-    'capataz',
-    '08:00-17:00',
-    'juan.perez@construtrack.com',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Juan',
-    'CTLOGIN|CAP-042|juan.perez@construtrack.com|capataz'
-  ),
-  (
-    'OBR-105',
-    'Miguel Angel',
-    'obrero',
-    '09:00-18:00',
-    'miguel.angel@construtrack.com',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Miguel',
-    'CTLOGIN|OBR-105|miguel.angel@construtrack.com|obrero'
-  )
-on conflict (employee_id) do update
-set
-  full_name = excluded.full_name,
-  role = excluded.role,
-  shift = excluded.shift,
-  email = excluded.email,
-  avatar_url = excluded.avatar_url,
-  qr_code = excluded.qr_code;
+delete from public.employees
+where employee_id in ('ARQ-001', 'CAP-042', 'OBR-105');

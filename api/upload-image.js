@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 const BUCKET = 'site-assets';
+const MAX_FILE_SIZE_BYTES = 80 * 1024 * 1024;
+const ALLOWED_MIME_PREFIXES = ['image/', 'video/'];
 
 function send(res, status, payload) {
   res.status(status).json(payload);
@@ -88,13 +90,22 @@ export default async function handler(req, res) {
   const parsed = parseDataUrl(normalizeText(body.dataUrl));
 
   if (!parsed || !fileName) {
-    return send(res, 400, { error: 'Faltan datos de la imagen.' });
+    return send(res, 400, { error: 'Faltan datos del archivo.' });
+  }
+
+  if (!ALLOWED_MIME_PREFIXES.some((prefix) => parsed.mimeType.startsWith(prefix))) {
+    return send(res, 400, { error: 'Solo se permiten imágenes o videos.' });
   }
 
   const buffer = Buffer.from(parsed.base64, 'base64');
+  if (buffer.byteLength > MAX_FILE_SIZE_BYTES) {
+    return send(res, 413, { error: 'El archivo supera el máximo de 80 MB.' });
+  }
+
   const ext = (fileName.split('.').pop() || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const safeExt = ext || (parsed.mimeType === 'image/png' ? 'png' : parsed.mimeType === 'image/webp' ? 'webp' : 'jpg');
-  const objectPath = `site-content/${Date.now()}-${slugify(fileName)}.${safeExt}`;
+  const safeExt = ext || (parsed.mimeType === 'image/png' ? 'png' : parsed.mimeType === 'image/webp' ? 'webp' : parsed.mimeType === 'video/mp4' ? 'mp4' : 'jpg');
+  const folder = parsed.mimeType.startsWith('video/') ? 'videos' : 'images';
+  const objectPath = `site-content/${folder}/${Date.now()}-${slugify(fileName)}.${safeExt}`;
 
   const { error: uploadError } = await supabase.storage.from(BUCKET).upload(objectPath, buffer, {
     contentType: parsed.mimeType,

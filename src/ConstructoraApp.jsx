@@ -12,9 +12,9 @@ import {
   LayoutDashboard,
   Lock,
   LogOut,
-  Map as MapIcon,
   Mail,
   Layers,
+  PackageCheck,
   QrCode,
   Search,
   Upload,
@@ -40,9 +40,10 @@ const EMPLOYEE_FORM_DEFAULTS = {
 };
 
 const PROJECTS = [
-  { id: 'PRJ-001', name: 'SkyPoint Tower', location: 'Buenos Aires, ARG', progress: 88, budget: '$120.4M', accessCode: 'SITE-ALPHA-001', status: 'En ejecucion' },
-  { id: 'PRJ-002', name: 'Harbor Bridge Res.', location: 'Montevideo, URY', progress: 42, budget: '$85.2M', accessCode: 'SITE-BRAVO-002', status: 'Estructura' },
-  { id: 'PRJ-003', name: 'Nexus Tech Center', location: 'Santiago, CHL', progress: 15, budget: '$210.0M', accessCode: 'SITE-CHARLIE-003', status: 'Excavacion' },
+  { id: 'ALT-001', name: 'Fachada vertical Norte', location: 'CABA, Buenos Aires', progress: 68, budget: '$4.8M', accessCode: 'FILO-ALT-001', status: 'Pintura y sellado' },
+  { id: 'VID-002', name: 'Limpieza de vidrios en altura', location: 'Vicente Lopez, Buenos Aires', progress: 35, budget: '$1.6M', accessCode: 'FILO-VID-002', status: 'En preparacion' },
+  { id: 'JAR-003', name: 'Jardin vertical comercial', location: 'San Isidro, Buenos Aires', progress: 20, budget: '$2.9M', accessCode: 'FILO-JAR-003', status: 'Armado de insumos' },
+  { id: 'CAR-004', name: 'Carteleria exterior', location: 'Palermo, Buenos Aires', progress: 12, budget: '$1.2M', accessCode: 'FILO-CAR-004', status: 'Relevamiento' },
 ];
 
 const FALLBACK_USERS = [
@@ -53,9 +54,21 @@ const FALLBACK_USERS = [
 ];
 
 const TASKS = [
-  { id: 1, title: 'Cimentacion Sector A', status: 'terminada', assignedTo: 'Miguel Angel', priority: 'alta' },
-  { id: 2, title: 'Instalacion Electrica Piso 1', status: 'en proceso', assignedTo: 'Miguel Angel', priority: 'media' },
-  { id: 3, title: 'Revoque Fino Fachada', status: 'sin iniciar', assignedTo: 'Pedro Ruiz', priority: 'baja' },
+  { id: 1, title: 'Relevar puntos de anclaje y linea de vida', status: 'en proceso', assignedTo: 'Capataz', priority: 'alta' },
+  { id: 2, title: 'Preparar pintura elastomerica y selladores', status: 'sin iniciar', assignedTo: 'Equipo vertical', priority: 'alta' },
+  { id: 3, title: 'Coordinar corte de vereda y perimetro seguro', status: 'terminada', assignedTo: 'Administrador', priority: 'media' },
+  { id: 4, title: 'Registrar fotos antes/despues para landing', status: 'sin iniciar', assignedTo: 'Operario', priority: 'media' },
+];
+
+const SUPPLIES = [
+  { name: 'Arnes integral', stock: 6, unit: 'u', status: 'OK' },
+  { name: 'Silletas certificadas', stock: 4, unit: 'u', status: 'Revisar' },
+  { name: 'Cuerdas y lineas de vida', stock: 180, unit: 'm', status: 'OK' },
+  { name: 'Sellador poliuretanico', stock: 18, unit: 'cartuchos', status: 'Comprar' },
+  { name: 'Pintura elastomerica', stock: 7, unit: 'baldes', status: 'OK' },
+  { name: 'Limpiavidrios y escurridores', stock: 5, unit: 'kits', status: 'OK' },
+  { name: 'Sustrato jardin vertical', stock: 9, unit: 'bolsas', status: 'Comprar' },
+  { name: 'Elementos de demarcacion', stock: 12, unit: 'u', status: 'OK' },
 ];
 
 function normalize(value) {
@@ -149,7 +162,7 @@ function StatCard({ label, value, detail }) {
   );
 }
 
-function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false, helpText = 'Pega una URL o sube una imagen.' }) {
+function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false, helpText = 'Pega una URL o sube una imagen.', accept = 'image/*', mediaType = 'image' }) {
   const fileInputRef = React.useRef(null);
 
   return (
@@ -169,14 +182,14 @@ function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false,
             className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white transition hover:bg-[#1F6B3F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Upload size={14} />
-            {uploading ? 'Subiendo...' : 'Subir foto'}
+            {uploading ? 'Subiendo...' : mediaType === 'video' ? 'Subir video' : 'Subir foto'}
           </button>
           <span className="text-[11px] text-slate-500">{helpText}</span>
         </div>
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept={accept}
           className="hidden"
           onChange={async (event) => {
             const file = event.target.files?.[0];
@@ -185,7 +198,11 @@ function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false,
             await onUpload(file);
           }}
         />
-        {value ? (
+        {value && mediaType === 'video' ? (
+          <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-950">
+            <video src={value} className="h-36 w-full object-cover" controls muted playsInline />
+          </div>
+        ) : value ? (
           <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
             <img src={value} alt={label} className="h-36 w-full object-cover" />
           </div>
@@ -572,11 +589,6 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
       return;
     }
 
-    if (!employeeForm.admin_code.trim()) {
-      setEmployeeFormError('Ingresa el codigo de administrador.');
-      return;
-    }
-
     setEmployeeFormLoading(true);
     try {
       const response = await fetch('/api/employees', {
@@ -584,7 +596,10 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(employeeForm),
+        body: JSON.stringify({
+          ...employeeForm,
+          admin_code: currentAdminPassword || employeeForm.admin_code,
+        }),
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -602,9 +617,9 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     }
   };
 
-  const handleUploadImage = async (fieldKey, applyUpdate, file) => {
+  const handleUploadMedia = async (fieldKey, applyUpdate, file) => {
     if (!currentUser || currentUser.role !== 'admin') {
-      setContentSyncError('Solo un administrador puede subir imágenes.');
+      setContentSyncError('Solo un administrador puede subir archivos.');
       return;
     }
 
@@ -711,9 +726,9 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     { id: 'obras', icon: Construction, label: 'Obras' },
     { id: 'asistencia', icon: QrCode, label: 'Asistencia' },
     { id: 'personal', icon: User, label: 'Personal', role: 'capataz' },
-    { id: 'finanzas', icon: DollarSign, label: 'Finanzas', role: 'arquitecto' },
+    { id: 'finanzas', icon: DollarSign, label: 'Costos', role: 'arquitecto' },
+    { id: 'insumos', icon: PackageCheck, label: 'Insumos', role: 'capataz' },
     { id: 'contenido', icon: Layers, label: 'Contenido', role: 'arquitecto' },
-    { id: 'planos', icon: MapIcon, label: 'Planos AR', role: 'arquitecto' },
   ].filter(
     (item) =>
       !item.role ||
@@ -734,7 +749,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
             <img src={LOGO_URL} alt="Filo Constructora" className="h-10 w-auto object-contain" />
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-[#1F6B3F]">Filo Constructora</p>
-              <p className="text-xs text-slate-500">Gestión de obra y control de acceso</p>
+              <p className="text-xs text-slate-500">Gestión de trabajos verticales, insumos y equipo</p>
             </div>
           </div>
 
@@ -795,7 +810,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
               <Panel className="lg:col-span-8">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <Badge tone="green">Resumen de obra</Badge>
+                    <Badge tone="green">Resumen operativo</Badge>
                     <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{selectedProject.name}</h2>
                     <p className="mt-2 text-sm text-slate-500">{selectedProject.location} | {selectedProject.status}</p>
                   </div>
@@ -804,26 +819,26 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <StatCard label="Avance" value={`${selectedProject.progress}%`} detail="Actualizado" />
-                  <StatCard label="Presupuesto" value={selectedProject.budget} detail="Aprobado" />
-                  <StatCard label="Obreros" value={rolesSummary.obrero || 0} detail="Activos" />
+                  <StatCard label="Costo" value={selectedProject.budget} detail="Estimado" />
+                  <StatCard label="Equipo" value={rolesSummary.obrero || 0} detail="Activos" />
                   <StatCard label="Asistencia" value={attendanceRecords.length} detail="Hoy" />
                 </div>
               </Panel>
 
               <Panel className="lg:col-span-4 bg-[#fbfcfb]">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Acceso de obra</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Acceso del trabajo</p>
                 <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 text-center">
                   <QRCodeSVG value={projectQrValue(selectedProject)} size={180} level="M" className="mx-auto" />
                   <p className="mt-4 text-sm font-semibold text-slate-900">{selectedProject.accessCode}</p>
-                  <p className="mt-2 text-xs text-slate-500">QR exclusivo para entrar y salir de la obra.</p>
+                  <p className="mt-2 text-xs text-slate-500">QR exclusivo para registrar entrada y salida del equipo.</p>
                 </div>
               </Panel>
 
               <Panel className="lg:col-span-12">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Tareas activas</p>
-                    <h3 className="text-2xl font-bold tracking-tight text-slate-900">Estado actual</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Tareas del equipo</p>
+                    <h3 className="text-2xl font-bold tracking-tight text-slate-900">Verticales y mantenimiento</h3>
                   </div>
                   <Badge tone="neutral">{TASKS.length} tareas</Badge>
                 </div>
@@ -848,12 +863,12 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
             <section className="space-y-6">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Portfolio de obras</p>
-                  <h2 className="text-3xl font-bold tracking-tight text-slate-900">Seleccionar proyecto</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Trabajos activos</p>
+                  <h2 className="text-3xl font-bold tracking-tight text-slate-900">Seleccionar servicio en curso</h2>
                 </div>
                 <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-400">
                   <Search size={16} />
-                  <span>Buscar obra...</span>
+                  <span>Buscar trabajo...</span>
                   <Filter size={16} />
                 </div>
               </div>
@@ -1046,11 +1061,10 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       <div>
                         <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Codigo admin</label>
                         <input
-                          required
                           type="password"
                           value={employeeForm.admin_code}
                           onChange={(event) => setEmployeeForm((prev) => ({ ...prev, admin_code: event.target.value }))}
-                          placeholder="codigo privado"
+                          placeholder="Usa la clave de tu sesión"
                           className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
                         />
                       </div>
@@ -1095,19 +1109,19 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
           {activeTab === 'finanzas' && (
             <section className="grid gap-6 lg:grid-cols-12">
               <Panel className="lg:col-span-8">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Finanzas</p>
-                <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">Presupuesto de {selectedProject.name}</h2>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Costos</p>
+                <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">Costeo de {selectedProject.name}</h2>
                 <div className="mt-6 flex items-end gap-3">
                   <p className="text-5xl font-bold tracking-tight text-slate-900">{selectedProject.budget}</p>
                   <Badge tone="green">+4%</Badge>
                 </div>
-                <p className="mt-4 max-w-xl text-sm text-slate-500">Seguimiento simple para materiales, labor y maquinaria con foco en control de gasto.</p>
+                <p className="mt-4 max-w-xl text-sm text-slate-500">Seguimiento simple para insumos, mano de obra, seguridad y traslados en trabajos verticales.</p>
               </Panel>
 
               <Panel className="lg:col-span-4 bg-[#fbfcfb]">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Distribución</p>
                 <div className="mt-4 space-y-4">
-                  {['Materiales', 'Labor', 'Maquinaria', 'Otros'].map((item, index) => (
+                  {['Insumos', 'Mano de obra', 'Seguridad', 'Traslados'].map((item, index) => (
                     <div key={item}>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-slate-600">{item}</span>
@@ -1116,6 +1130,52 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
                         <div className="h-full rounded-full bg-[#1F6B3F]" style={{ width: `${45 - index * 10}%` }} />
                       </div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            </section>
+          )}
+
+          {activeTab === 'insumos' && (
+            <section className="space-y-6">
+              <Panel>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Insumos operativos</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Lo que el admin tiene que tener a mano</h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                      Control rápido de seguridad, materiales y herramientas para pintura vertical, limpieza de vidrios, jardinería vertical y cartelería.
+                    </p>
+                  </div>
+                  <Badge tone="green">{SUPPLIES.length} items</Badge>
+                </div>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {SUPPLIES.map((item) => (
+                    <div key={item.name} className="rounded-2xl border border-slate-200 bg-[#fbfcfb] p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="rounded-full bg-white p-2 text-[#1F6B3F] shadow-sm">
+                          <PackageCheck size={18} />
+                        </div>
+                        <Badge tone={item.status === 'OK' ? 'green' : item.status === 'Comprar' ? 'red' : 'amber'}>{item.status}</Badge>
+                      </div>
+                      <p className="mt-4 text-lg font-semibold text-slate-900">{item.name}</p>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Stock: <span className="font-semibold text-slate-900">{item.stock}</span> {item.unit}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+
+              <Panel className="bg-[#fbfcfb]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Checklist antes de salir</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {['EPP completo y revisado', 'Fotos de avance asignadas', 'Material cargado por servicio'].map((item) => (
+                    <div key={item} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                      <CheckSquare className="text-[#1F6B3F]" size={18} />
+                      <p className="text-sm font-semibold text-slate-700">{item}</p>
                     </div>
                   ))}
                 </div>
@@ -1151,7 +1211,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       onChange={(event) => updateContent((prev) => ({ ...prev, logoUrl: event.target.value }))}
                       uploading={imageUploadingKey === 'logoUrl'}
                       helpText="Ideal para el logo principal del sitio."
-                      onUpload={(file) => handleUploadImage('logoUrl', (prev, url) => ({ ...prev, logoUrl: url }), file)}
+                      onUpload={(file) => handleUploadMedia('logoUrl', (prev, url) => ({ ...prev, logoUrl: url }), file)}
                     />
                   </div>
 
@@ -1191,7 +1251,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       onChange={(event) => updateContent((prev) => ({ ...prev, hero: { ...prev.hero, image: event.target.value } }))}
                       uploading={imageUploadingKey === 'hero.image'}
                       helpText="Sube una foto fuerte para la cabecera."
-                      onUpload={(file) => handleUploadImage('hero.image', (prev, url) => ({ ...prev, hero: { ...prev.hero, image: url } }), file)}
+                      onUpload={(file) => handleUploadMedia('hero.image', (prev, url) => ({ ...prev, hero: { ...prev.hero, image: url } }), file)}
                     />
                   </div>
 
@@ -1265,7 +1325,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                             uploading={imageUploadingKey === `highlight-${index}`}
                             helpText="Recomendado para mostrar una foto de obra."
                             onUpload={(file) =>
-                              handleUploadImage(
+                              handleUploadMedia(
                                 `highlight-${index}`,
                                 (prev, url) => ({
                                   ...prev,
@@ -1305,17 +1365,6 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                           placeholder="Etiqueta del trabajo"
                           className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
                         />
-                        <input
-                          value={project.videoUrl || ''}
-                          onChange={(event) =>
-                            updateContent((prev) => ({
-                              ...prev,
-                              projects: prev.projects.map((entry, i) => (i === index ? { ...entry, videoUrl: event.target.value } : entry)),
-                            }))
-                          }
-                          placeholder="Link de video opcional"
-                          className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
-                        />
                         <div className="mt-3">
                           <ImageFieldEditor
                             label={`Imagen del proyecto ${index + 1}`}
@@ -1329,11 +1378,37 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                             uploading={imageUploadingKey === `project-${index}`}
                             helpText="Sirve como imagen principal en el carrusel."
                             onUpload={(file) =>
-                              handleUploadImage(
+                              handleUploadMedia(
                                 `project-${index}`,
                                 (prev, url) => ({
                                   ...prev,
                                   projects: prev.projects.map((entry, i) => (i === index ? { ...entry, image: url } : entry)),
+                                }),
+                                file
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="mt-3">
+                          <ImageFieldEditor
+                            label={`Video del proyecto ${index + 1}`}
+                            value={project.videoUrl || ''}
+                            onChange={(event) =>
+                              updateContent((prev) => ({
+                                ...prev,
+                                projects: prev.projects.map((entry, i) => (i === index ? { ...entry, videoUrl: event.target.value } : entry)),
+                              }))
+                            }
+                            uploading={imageUploadingKey === `project-video-${index}`}
+                            helpText="Sube un video corto o pega un link de Instagram/YouTube."
+                            accept="video/*"
+                            mediaType="video"
+                            onUpload={(file) =>
+                              handleUploadMedia(
+                                `project-video-${index}`,
+                                (prev, url) => ({
+                                  ...prev,
+                                  projects: prev.projects.map((entry, i) => (i === index ? { ...entry, videoUrl: url } : entry)),
                                 }),
                                 file
                               )
@@ -1376,27 +1451,9 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
             </section>
           )}
 
-          {activeTab === 'planos' && (
-            <section className="space-y-6">
-              <Panel>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Planos AR</p>
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Visualización de obra</h2>
-                  </div>
-                  <Badge tone="neutral">Demo</Badge>
-                </div>
-                <div className="mt-6 grid place-items-center rounded-[28px] border border-slate-200 bg-[#fbfcfb] p-10">
-                  <div className="rounded-full border border-slate-200 bg-white p-5 text-[#1F6B3F] shadow-sm">
-                    <MapIcon size={40} />
-                  </div>
-                  <p className="mt-4 text-sm text-slate-500">Acá podemos dejar el módulo AR más adelante, pero con una estética normal de obra.</p>
-                </div>
-              </Panel>
-            </section>
-          )}
         </main>
       </div>
     </div>
   );
 }
+

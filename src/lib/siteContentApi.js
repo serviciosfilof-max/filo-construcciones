@@ -60,7 +60,7 @@ function fileToDataUrl(file) {
 
 export async function uploadSiteImage(file, actorId, adminPassword) {
   if (!file) {
-    throw new Error('Selecciona una imagen para subir.');
+    throw new Error('Selecciona un archivo para subir.');
   }
 
   const dataUrl = await fileToDataUrl(file);
