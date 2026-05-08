@@ -67,27 +67,10 @@ const TIMELINES = ['Urgente por filtración', 'Inmediato', 'Dentro de 30 días',
 const SERVICE_ICONS = [Droplets, Building2, HardHat, Paintbrush, Wrench, Flower2, Layers];
 
 function buildLeadResult(form) {
-  const surface = Number(form.surface) || 0;
-  const score =
-    (form.name ? 1 : 0) +
-    (form.phone ? 1 : 0) +
-    (form.email ? 1 : 0) +
-    (form.location ? 1 : 0) +
-    (form.projectType ? 1 : 0) +
-    (form.budget ? 1 : 0) +
-    (form.timeline ? 1 : 0) +
-    (surface >= 80 ? 1 : 0) +
-    (surface >= 250 ? 1 : 0);
-
-  const status = score >= 8 ? 'Proyecto muy calificado' : score >= 5 ? 'Proyecto para revisar' : 'Faltan datos para priorizar';
-  const nextStep =
-    score >= 8
-      ? 'Nos deja un lead sólido. Podemos responder con propuesta y próximos pasos.'
-      : score >= 5
-        ? 'Hay interés real. Falta un poco de contexto para filtrar mejor.'
-        : 'Pedimos más datos para no abrir conversaciones que no encajan con el alcance.';
-
-  return { score, status, nextStep };
+  return {
+    status: 'Solicitud enviada',
+    nextStep: 'Se abrió WhatsApp con los datos cargados. Revisamos tu consulta y coordinamos el próximo paso.',
+  };
 }
 
 function buildLeadWhatsappLink(form) {
@@ -317,11 +300,11 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
           <div className="mb-12 max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] text-orange-400">
               <Sparkles className="h-3.5 w-3.5" />
-              Filtro de presupuesto
+              Solicitud de presupuesto
             </span>
             <h3 className="mt-5 text-5xl font-black uppercase italic leading-none md:text-7xl">Cotizá tu terraza o fachada</h3>
             <p className="mt-5 max-w-2xl text-base leading-7 text-white/70">
-              Pedimos los datos justos para entender si hay filtraciones, humedad, altura, superficie y urgencia. Con eso respondemos por WhatsApp con más contexto y ordenamos mejor la visita o presupuesto.
+              Completá los datos principales del trabajo y te respondemos por WhatsApp para coordinar la visita, revisar fotos o avanzar con una cotización.
             </p>
           </div>
 
@@ -338,8 +321,8 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
 
               <div className="mt-8 space-y-4">
                 {[
-                  'Priorizamos terrazas, balcones, medianeras y fachadas con filtraciones.',
-                  'Podés indicar superficie, ubicación y urgencia para acelerar la respuesta.',
+                  'Atendemos terrazas, balcones, medianeras y fachadas con filtraciones.',
+                  'Podés indicar superficie, ubicación y urgencia para orientar mejor la consulta.',
                   'El WhatsApp se abre con todos los datos cargados para no repetir información.',
                 ].map((item) => (
                   <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -381,7 +364,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
             <div className="rounded-[36px] bg-white p-6 text-zinc-900 shadow-2xl md:p-10">
               <div className="flex flex-col gap-3 border-b border-zinc-100 pb-6 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.35em] text-orange-600">Solicitud filtrada</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.35em] text-orange-600">Solicitud de servicio</p>
                   <h4 className="mt-3 text-3xl font-black uppercase italic">Pedí presupuesto</h4>
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-700">
@@ -540,10 +523,10 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                 <div className="mt-8 rounded-[28px] border border-orange-100 bg-orange-50 p-6">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.35em] text-orange-600">Resultado del filtro</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.35em] text-orange-600">Consulta recibida</p>
                       <h5 className="mt-2 text-2xl font-black uppercase italic text-zinc-900">{leadResult.status}</h5>
                     </div>
-                    <div className="rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.25em] text-orange-600">{leadResult.score} puntos</div>
+                    <div className="rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.25em] text-orange-600">WhatsApp listo</div>
                   </div>
                   <p className="mt-4 text-sm leading-7 text-zinc-700">{leadResult.nextStep}</p>
                   <div className="mt-5 flex flex-wrap gap-3">
