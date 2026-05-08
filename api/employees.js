@@ -10,6 +10,18 @@ function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function normalizeOptionalUrl(value) {
+  const trimmed = normalizeText(value);
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -36,7 +48,7 @@ export default async function handler(req, res) {
   const role = normalizeText(body.role);
   const shift = normalizeText(body.shift);
   const email = normalizeText(body.email).toLowerCase();
-  const avatar_url = normalizeText(body.avatar_url);
+  const avatar_url = normalizeOptionalUrl(body.avatar_url);
 
   if (!employee_id || !full_name || !role || !shift || !email) {
     return send(res, 400, { error: 'Missing required employee fields.' });

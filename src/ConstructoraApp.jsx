@@ -87,6 +87,18 @@ function normalize(value) {
   return value.trim().toLowerCase();
 }
 
+function normalizeOptionalMediaUrl(value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
 function makeQrPayload(user) {
   return `CTLOGIN|${user.id}|${user.email.toLowerCase()}|${user.role}`;
 }
@@ -174,8 +186,9 @@ function StatCard({ label, value, detail }) {
   );
 }
 
-function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false, helpText = 'Pega una URL o sube una imagen.', accept = 'image/*', mediaType = 'image' }) {
+function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false, helpText = 'Pega una URL o sube una imagen.', accept = 'image/*', mediaType = 'image', optional = false }) {
   const fileInputRef = React.useRef(null);
+  const previewUrl = normalizeOptionalMediaUrl(value);
 
   return (
     <div>
@@ -184,6 +197,7 @@ function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false,
         <input
           value={value}
           onChange={onChange}
+          placeholder={optional ? 'Opcional: pegá una URL de imagen o subí una foto' : undefined}
           className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
         />
         <div className="flex flex-wrap items-center gap-2">
@@ -213,13 +227,13 @@ function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false,
             await onUpload(file);
           }}
         />
-        {value && mediaType === 'video' ? (
+        {previewUrl && mediaType === 'video' ? (
           <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-950">
-            <video src={value} className="h-36 w-full object-cover" controls muted playsInline />
+            <video src={previewUrl} className="h-36 w-full object-cover" controls muted playsInline />
           </div>
-        ) : value ? (
+        ) : previewUrl ? (
           <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
-            <img src={value} alt={label} className="h-36 w-full object-cover" />
+            <img src={previewUrl} alt={label} className="h-36 w-full object-cover" />
           </div>
         ) : (
           <div className="flex h-36 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-slate-400">
@@ -606,6 +620,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
 
     setEmployeeFormLoading(true);
     try {
+      const cleanedAvatarUrl = normalizeOptionalMediaUrl(employeeForm.avatar_url);
       const response = await fetch('/api/employees', {
         method: 'POST',
         headers: {
@@ -613,6 +628,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
         },
         body: JSON.stringify({
           ...employeeForm,
+          avatar_url: cleanedAvatarUrl,
           admin_code: currentAdminPassword || employeeForm.admin_code,
         }),
       });
@@ -1075,6 +1091,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                           onChange={(event) => setEmployeeForm((prev) => ({ ...prev, avatar_url: event.target.value }))}
                           uploading={imageUploadingKey === 'employee-avatar'}
                           helpText="Subí una foto desde el celular del admin o pegá una URL."
+                          optional
                           onUpload={(file) =>
                             handleUploadMedia(
                               'employee-avatar',
