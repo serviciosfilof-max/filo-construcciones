@@ -1,5 +1,5 @@
 ﻿
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
@@ -23,7 +23,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import ProjectQrScanner from './components/ProjectQrScanner';
 import { hasSupabaseEnv, supabase } from './lib/supabaseClient';
-import { loginAdmin, saveSiteContent, uploadSiteImage } from './lib/siteContentApi';
+import { loginAdmin, loginStaff, saveSiteContent, uploadSiteImage } from './lib/siteContentApi';
 import { defaultSiteContent } from './siteContent';
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0995/6432/3185/files/FILO.png?v=1775935955';
@@ -51,6 +51,7 @@ const EMPLOYEE_FORM_DEFAULTS = {
   shift: '',
   email: '',
   avatar_url: '',
+  password: '',
   admin_code: '',
 };
 
@@ -125,10 +126,6 @@ const ROLE_DASHBOARDS = {
     checklist: ['Presupuesto revisado', 'Datos del personal al día', 'Contenido público validado'],
   },
 };
-
-function normalize(value) {
-  return value.trim().toLowerCase();
-}
 
 function normalizeOptionalMediaUrl(value) {
   const trimmed = typeof value === 'string' ? value.trim() : '';
@@ -297,14 +294,9 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
   const [password, setPassword] = useState('');
   const [staffEmail, setStaffEmail] = useState('');
   const [staffEmployeeId, setStaffEmployeeId] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const byCredentials = useMemo(() => {
-    const map = new Map();
-    users.forEach((user) => map.set(`${normalize(user.email)}|${normalize(user.id)}`, user));
-    return map;
-  }, [users]);
 
   const submitCredentials = async (event) => {
     event.preventDefault();
@@ -323,10 +315,11 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
   const submitStaffAccess = (event) => {
     event.preventDefault();
     setError('');
-    const matched = byCredentials.get(`${normalize(staffEmail)}|${normalize(staffEmployeeId)}`);
-    if (!matched) return setError('No encontre ese acceso de personal. Revisa correo e ID.');
-    if (matched.role === 'admin') return setError('El administrador debe ingresar desde Admin con contraseña.');
-    onLogin(matched);
+    setLoading(true);
+    loginStaff({ email: staffEmail, employeeId: staffEmployeeId, password: staffPassword })
+      .then((payload) => onLogin(payload.user))
+      .catch((err) => setError(err.message || 'No se pudo iniciar sesión.'))
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -474,8 +467,22 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
                   />
                 </div>
               </div>
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Clave de acceso</label>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+                  <Lock size={16} className="text-slate-400" />
+                  <input
+                    type="password"
+                    required
+                    value={staffPassword}
+                    onChange={(event) => setStaffPassword(event.target.value)}
+                    placeholder="Clave creada por el admin"
+                    className="w-full bg-transparent text-sm outline-none"
+                  />
+                </div>
+              </div>
               <button type="submit" className="w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-95">
-                Entrar al panel
+                {loading ? 'Validando...' : 'Entrar al panel'}
               </button>
             </form>
           )}
@@ -1153,6 +1160,19 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                           value={employeeForm.shift}
                           onChange={(event) => setEmployeeForm((prev) => ({ ...prev, shift: event.target.value }))}
                           placeholder="07:00-15:00"
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Clave de acceso</label>
+                        <input
+                          required
+                          type="password"
+                          minLength={4}
+                          value={employeeForm.password}
+                          onChange={(event) => setEmployeeForm((prev) => ({ ...prev, password: event.target.value }))}
+                          placeholder="Clave inicial del empleado"
                           className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
                         />
                       </div>

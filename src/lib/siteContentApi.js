@@ -1,6 +1,7 @@
 const SITE_CONTENT_ENDPOINT = '/api/site-content';
 const SITE_IMAGE_UPLOAD_ENDPOINT = '/api/upload-image';
 const ADMIN_LOGIN_ENDPOINT = '/api/admin-login';
+const STAFF_LOGIN_ENDPOINT = '/api/staff-login';
 
 async function readJsonResponse(response) {
   const payload = await response.json().catch(() => ({}));
@@ -18,6 +19,22 @@ export async function fetchSiteContent() {
 
 export async function loginAdmin({ email, employeeId, password }) {
   const response = await fetch(ADMIN_LOGIN_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      employeeId,
+      password,
+    }),
+  });
+
+  return readJsonResponse(response);
+}
+
+export async function loginStaff({ email, employeeId, password }) {
+  const response = await fetch(STAFF_LOGIN_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

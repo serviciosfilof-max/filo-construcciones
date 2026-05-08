@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { hashPassword } from './_password.js';
 import { getSupabaseUrl, normalizeText } from './_supabase.js';
 
 const ALLOWED_ROLES = new Set(['supervisor', 'tecnico_vertical', 'operario', 'administrativo']);
@@ -46,9 +47,14 @@ export default async function handler(req, res) {
   const shift = normalizeText(body.shift);
   const email = normalizeText(body.email).toLowerCase();
   const avatar_url = normalizeOptionalUrl(body.avatar_url);
+  const password = normalizeText(body.password);
 
-  if (!employee_id || !full_name || !role || !shift || !email) {
+  if (!employee_id || !full_name || !role || !shift || !email || !password) {
     return send(res, 400, { error: 'Missing required employee fields.' });
+  }
+
+  if (password.length < 4) {
+    return send(res, 400, { error: 'La clave del empleado debe tener al menos 4 caracteres.' });
   }
 
   if (!ALLOWED_ROLES.has(role)) {
@@ -74,6 +80,7 @@ export default async function handler(req, res) {
         shift,
         email,
         avatar_url: avatar_url || null,
+        password_hash: hashPassword(password),
         qr_code,
       },
       { onConflict: 'employee_id' }

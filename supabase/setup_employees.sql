@@ -5,6 +5,7 @@ create table if not exists public.employees (
   shift text not null,
   email text not null unique,
   avatar_url text,
+  password_hash text,
   qr_code text unique,
   created_at timestamptz not null default now()
 );
@@ -17,6 +18,9 @@ drop constraint if exists employees_role_check;
 alter table public.employees
 add constraint employees_role_check
 check (role in ('admin', 'supervisor', 'tecnico_vertical', 'operario', 'administrativo'));
+
+alter table public.employees
+add column if not exists password_hash text;
 
 drop policy if exists "Allow public read employees for demo" on public.employees;
 create policy "Allow public read employees for demo"
