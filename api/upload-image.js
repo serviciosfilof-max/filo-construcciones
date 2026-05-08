@@ -48,6 +48,11 @@ async function ensureAdmin(supabase, actorId) {
   return data.role === 'admin';
 }
 
+function ensureAdminPassword(password) {
+  const adminCode = normalizeText(process.env.ADMIN_CREATE_CODE);
+  return Boolean(adminCode && normalizeText(password) === adminCode);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return send(res, 405, { error: 'Method not allowed' });
@@ -71,7 +76,7 @@ export default async function handler(req, res) {
   const actorId = normalizeText(body.actorId);
   const isAdmin = await ensureAdmin(supabase, actorId);
 
-  if (!isAdmin) {
+  if (!isAdmin || !ensureAdminPassword(body.adminPassword)) {
     return send(res, 403, { error: 'Solo un administrador puede subir imágenes.' });
   }
 

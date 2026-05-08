@@ -1,5 +1,6 @@
 const SITE_CONTENT_ENDPOINT = '/api/site-content';
 const SITE_IMAGE_UPLOAD_ENDPOINT = '/api/upload-image';
+const ADMIN_LOGIN_ENDPOINT = '/api/admin-login';
 
 async function readJsonResponse(response) {
   const payload = await response.json().catch(() => ({}));
@@ -15,7 +16,23 @@ export async function fetchSiteContent() {
   return payload.content || payload;
 }
 
-export async function saveSiteContent(content, actorId) {
+export async function loginAdmin({ email, employeeId, password }) {
+  const response = await fetch(ADMIN_LOGIN_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      employeeId,
+      password,
+    }),
+  });
+
+  return readJsonResponse(response);
+}
+
+export async function saveSiteContent(content, actorId, adminPassword) {
   const response = await fetch(SITE_CONTENT_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -23,6 +40,7 @@ export async function saveSiteContent(content, actorId) {
     },
     body: JSON.stringify({
       actorId,
+      adminPassword,
       content,
     }),
   });
@@ -40,7 +58,7 @@ function fileToDataUrl(file) {
   });
 }
 
-export async function uploadSiteImage(file, actorId) {
+export async function uploadSiteImage(file, actorId, adminPassword) {
   if (!file) {
     throw new Error('Selecciona una imagen para subir.');
   }
@@ -53,6 +71,7 @@ export async function uploadSiteImage(file, actorId) {
     },
     body: JSON.stringify({
       actorId,
+      adminPassword,
       fileName: file.name,
       mimeType: file.type,
       dataUrl,

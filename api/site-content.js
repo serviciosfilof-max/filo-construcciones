@@ -53,6 +53,11 @@ async function ensureAdmin(supabase, actorId) {
   return data.role === 'admin';
 }
 
+function ensureAdminPassword(password) {
+  const adminCode = normalizeText(process.env.ADMIN_CREATE_CODE);
+  return Boolean(adminCode && normalizeText(password) === adminCode);
+}
+
 export default async function handler(req, res) {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -90,7 +95,7 @@ export default async function handler(req, res) {
     const actorId = normalizeText(body.actorId);
     const isAdmin = await ensureAdmin(supabase, actorId);
 
-    if (!isAdmin) {
+    if (!isAdmin || !ensureAdminPassword(body.adminPassword)) {
       return send(res, 403, { error: 'Solo un administrador puede editar el contenido.' });
     }
 

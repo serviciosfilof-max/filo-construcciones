@@ -10,6 +10,7 @@ import {
   Filter,
   Image,
   LayoutDashboard,
+  Lock,
   LogOut,
   Map as MapIcon,
   Mail,
@@ -22,7 +23,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import ProjectQrScanner from './components/ProjectQrScanner';
 import { hasSupabaseEnv, supabase } from './lib/supabaseClient';
-import { saveSiteContent, uploadSiteImage } from './lib/siteContentApi';
+import { loginAdmin, saveSiteContent, uploadSiteImage } from './lib/siteContentApi';
 import { defaultSiteContent } from './siteContent';
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0995/6432/3185/files/FILO.png?v=1775935955';
@@ -204,8 +205,10 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
   const [mode, setMode] = useState('credentials');
   const [email, setEmail] = useState('');
   const [employeeId, setEmployeeId] = useState('');
+  const [password, setPassword] = useState('');
   const [qrValue, setQrValue] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const byCredentials = useMemo(() => {
     const map = new Map();
@@ -219,12 +222,18 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
     return map;
   }, [users]);
 
-  const submitCredentials = (event) => {
+  const submitCredentials = async (event) => {
     event.preventDefault();
     setError('');
-    const matched = byCredentials.get(`${normalize(email)}|${normalize(employeeId)}`);
-    if (!matched) return setError('Credenciales invalidas. Verifica correo e ID.');
-    onLogin(matched);
+    setLoading(true);
+    try {
+      const payload = await loginAdmin({ email, employeeId, password });
+      onLogin(payload.user, password);
+    } catch (err) {
+      setError(err.message || 'No se pudo iniciar sesión.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const submitQr = (event) => {
@@ -232,6 +241,7 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
     setError('');
     const matched = byQr.get(qrValue.trim());
     if (!matched) return setError('QR invalido. Usa un codigo activo de personal.');
+    if (matched.role === 'admin') return setError('El administrador debe ingresar con contraseña.');
     onLogin(matched);
   };
 
@@ -254,21 +264,16 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
                 Una plataforma clara para administrar la obra.
               </h1>
               <p className="mt-4 max-w-lg text-sm leading-6 text-slate-500">
-                Ingreso por correo + ID, QR de usuario y QR exclusivo de obra para marcar entrada y salida desde el celular.
+                Ingreso de administrador con correo, ID y contraseña. El QR queda para usuarios operativos y asistencia.
               </p>
             </div>
           </div>
 
-          <div className="mt-10 grid gap-3 sm:grid-cols-3">
-            {users.map((user) => (
-              <div key={user.id} className="rounded-2xl border border-slate-200 bg-[#fbfcfb] p-4">
-                <p className="text-sm font-semibold text-slate-900">{user.name}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-400">
-                  {user.role} | {user.shift}
-                </p>
-                <p className="mt-3 text-[11px] text-slate-500">{user.email}</p>
-              </div>
-            ))}
+          <div className="mt-10 rounded-[28px] border border-[#dfe8df] bg-[#fbfcfb] p-5">
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#1F6B3F]">Contenido del landing</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              El administrador puede cambiar fotos, textos, servicios y enlaces de videos desde el panel interno.
+            </p>
           </div>
         </Panel>
 
@@ -281,7 +286,7 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
               }}
               className={`w-full rounded-full px-4 py-3 text-xs font-bold uppercase tracking-widest ${mode === 'credentials' ? 'bg-[#1F6B3F] text-white' : 'text-slate-500 hover:text-slate-900'}`}
             >
-              Correo + ID
+              Admin
             </button>
             <button
               onClick={() => {
@@ -334,8 +339,25 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
                 </div>
               </div>
 
-              <button type="submit" className="w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-95">
-                Iniciar sesion
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
+                  Contraseña admin
+                </label>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+                  <Lock size={16} className="text-slate-400" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Contraseña privada"
+                    className="w-full bg-transparent text-sm outline-none"
+                  />
+                </div>
+              </div>
+
+              <button disabled={loading} type="submit" className="w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60">
+                {loading ? 'Validando...' : 'Iniciar sesión'}
               </button>
             </form>
           ) : (
@@ -356,23 +378,9 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
 
           {error && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">{error}</p>}
 
-          <div className="mt-8 rounded-[28px] border border-slate-200 bg-[#fbfcfb] p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">QR de prueba</p>
-                <p className="text-sm text-slate-500">Sirve para testear el acceso antes de conectar lectores reales.</p>
-              </div>
-              <Badge tone="neutral">Demo</Badge>
-            </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-3">
-              {users.map((user) => (
-                <div key={user.id} className="rounded-2xl border border-slate-200 bg-white p-3 text-center">
-                  <QRCodeSVG value={userQrValue(user)} size={88} level="M" className="mx-auto mb-2" />
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{user.id}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <p className="mt-8 text-center text-[11px] leading-5 text-slate-400">
+            Si necesitás recuperar el acceso, pedí al administrador del proyecto que actualice la variable privada de Vercel.
+          </p>
         </Panel>
       </div>
     </div>
@@ -383,6 +391,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   const [usersSource, setUsersSource] = useState('local');
   const [usersError, setUsersError] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentAdminPassword, setCurrentAdminPassword] = useState('');
   const [employeeForm, setEmployeeForm] = useState(EMPLOYEE_FORM_DEFAULTS);
   const [employeeFormMessage, setEmployeeFormMessage] = useState('');
   const [employeeFormError, setEmployeeFormError] = useState('');
@@ -411,7 +420,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     const timer = setTimeout(async () => {
       setContentSyncState('saving');
       try {
-        await saveSiteContent(content, currentUser.id);
+        await saveSiteContent(content, currentUser.id, currentAdminPassword);
         if (!cancelled) {
           setContentSyncState('saved');
           setContentSyncError('');
@@ -428,7 +437,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [content, currentUser?.id, currentUser?.role]);
+  }, [content, currentUser?.id, currentUser?.role, currentAdminPassword]);
 
   async function loadUsers() {
     if (!hasSupabaseEnv || !supabase) {
@@ -481,7 +490,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     try {
       const parsed = JSON.parse(raw);
       const user = users.find((item) => item.id === parsed.userId);
-      if (user) setCurrentUser(user);
+      if (user && user.role !== 'admin') setCurrentUser(user);
     } catch {
       localStorage.removeItem(SESSION_KEY);
     }
@@ -542,8 +551,9 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     };
   }, [activeTab, selectedProject, currentUser?.id]);
 
-  const handleLogin = (user) => {
+  const handleLogin = (user, adminPassword = '') => {
     setCurrentUser(user);
+    setCurrentAdminPassword(adminPassword);
     localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id, loggedAt: new Date().toISOString() }));
   };
 
@@ -601,7 +611,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     setImageUploadingKey(fieldKey);
     setContentSyncError('');
     try {
-      const url = await uploadSiteImage(file, currentUser.id);
+      const url = await uploadSiteImage(file, currentUser.id, currentAdminPassword);
       updateContent((prev) => applyUpdate(prev, url));
       setContentSyncState('saved');
     } catch (error) {
@@ -683,6 +693,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   const handleLogout = () => {
     localStorage.removeItem(SESSION_KEY);
     setCurrentUser(null);
+    setCurrentAdminPassword('');
     setSelectedProject(PROJECTS[0]);
     setActiveTab('inicio');
     setScannerOpen(false);
