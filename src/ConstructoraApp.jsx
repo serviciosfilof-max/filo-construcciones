@@ -157,6 +157,28 @@ function parseProjectQr(value) {
   return { projectId: parts[1], accessCode: parts[2] };
 }
 
+function parseTimeToMinutes(value) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function isNowInsideShift(shift, date = new Date()) {
+  const [startText, endText] = String(shift || '').split('-').map((part) => part.trim());
+  const start = parseTimeToMinutes(startText);
+  const end = parseTimeToMinutes(endText);
+  if (start === null || end === null) return true;
+
+  const now = date.getHours() * 60 + date.getMinutes();
+  if (start === end) return true;
+  if (start < end) return now >= start && now <= end;
+  return now >= start || now <= end;
+}
+
 function mapDbUser(row) {
   return {
     id: row.employee_id,
@@ -751,6 +773,14 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   };
 
   const handleAttendanceScan = async (decodedText) => {
+    if (currentUser.role === 'admin') {
+      throw new Error('El administrador no registra asistencia propia. Ingresá como personal para marcar entrada o salida.');
+    }
+
+    if (!isNowInsideShift(currentUser.shift)) {
+      throw new Error(`Tu turno habilitado es ${currentUser.shift}. No se puede registrar asistencia fuera de horario.`);
+    }
+
     const parsed = parseProjectQr(decodedText);
     if (!parsed) throw new Error('El QR no corresponde a una obra valida.');
     if (parsed.projectId !== selectedProject.id || parsed.accessCode !== selectedProject.accessCode) {
@@ -845,6 +875,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   const roleDashboard = ROLE_DASHBOARDS[currentUser.role] || ROLE_DASHBOARDS.operario;
   const roleTasks = TASKS.filter((task) => roleDashboard.tasks.includes(task.id));
   const roleSupplies = currentUser.role === 'operario' ? SUPPLIES.slice(0, 4) : SUPPLIES;
+  const canRegisterAttendance = currentUser.role !== 'admin';
   return (
     <div className="min-h-screen bg-[#f6f8f6] text-slate-900">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -1032,15 +1063,21 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                 <div className="mt-6 rounded-[28px] border border-slate-200 bg-[#fbfcfb] p-5 text-center">
                   <QRCodeSVG value={projectQrValue(selectedProject)} size={200} level="M" className="mx-auto" />
                   <p className="mt-4 text-sm font-semibold text-slate-900">{selectedProject.accessCode}</p>
-                  <p className="mt-2 text-xs text-slate-500">Funciona en navegador móvil con cámara activa.</p>
+                  <p className="mt-2 text-xs text-slate-500">Este QR se deja en la obra para que el personal registre asistencia.</p>
                 </div>
 
-                <button
-                  onClick={() => setScannerOpen((value) => !value)}
-                  className="mt-5 w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-95"
-                >
-                  {scannerOpen ? 'Cerrar camara' : 'Abrir camara y escanear'}
-                </button>
+                {canRegisterAttendance ? (
+                  <button
+                    onClick={() => setScannerOpen((value) => !value)}
+                    className="mt-5 w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-95"
+                  >
+                    {scannerOpen ? 'Cerrar camara' : 'Abrir camara y escanear'}
+                  </button>
+                ) : (
+                  <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-700">
+                    El admin solo consulta registros. Para marcar asistencia, ingresá con una cuenta de personal.
+                  </p>
+                )}
               </Panel>
 
               <Panel className="xl:col-span-7">
@@ -1053,11 +1090,11 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                 </div>
 
                 <div className="mt-5">
-                  {scannerOpen ? (
+                  {scannerOpen && canRegisterAttendance ? (
                     <ProjectQrScanner onScan={handleAttendanceScan} onClose={() => setScannerOpen(false)} />
                   ) : (
                     <div className="rounded-[28px] border border-dashed border-slate-200 bg-[#fbfcfb] p-8 text-sm text-slate-500">
-                      Abrí la cámara para escanear el QR de obra desde el celular.
+                      {canRegisterAttendance ? 'Abrí la cámara para escanear el QR de obra desde el celular.' : 'Ingresá como personal para usar el scanner de asistencia.'}
                     </div>
                   )}
                 </div>
