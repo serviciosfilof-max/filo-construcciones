@@ -78,7 +78,7 @@ function buildLeadWhatsappLink(form) {
     'Hola FILO, quiero pedir presupuesto.',
     '',
     `Nombre: ${form.name || '-'}`,
-    `Empresa / estudio: ${form.company || '-'}`,
+    `Administrador o propietario: ${form.company || '-'}`,
     `Teléfono: ${form.phone || '-'}`,
     `Email: ${form.email || '-'}`,
     `Servicio: ${form.projectType || '-'}`,
@@ -387,7 +387,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Empresa / estudio</label>
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Administrador o propietario</label>
                   <input
                     type="text"
                     value={leadForm.company}
