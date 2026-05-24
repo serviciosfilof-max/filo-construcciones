@@ -58,7 +58,7 @@ const EMPLOYEE_FORM_DEFAULTS = {
 const PROJECTS = [
   { id: 'ALT-001', name: 'Fachada vertical Norte', location: 'CABA, Buenos Aires', progress: 68, budget: '$4.8M', accessCode: 'FILO-ALT-001', status: 'Pintura y sellado' },
   { id: 'VID-002', name: 'Limpieza de vidrios en altura', location: 'Vicente Lopez, Buenos Aires', progress: 35, budget: '$1.6M', accessCode: 'FILO-VID-002', status: 'En preparacion' },
-  { id: 'JAR-003', name: 'Jardin vertical comercial', location: 'San Isidro, Buenos Aires', progress: 20, budget: '$2.9M', accessCode: 'FILO-JAR-003', status: 'Armado de insumos' },
+  { id: 'IMP-003', name: 'Terraza con filtraciones', location: 'San Isidro, Buenos Aires', progress: 20, budget: '$2.9M', accessCode: 'FILO-IMP-003', status: 'Armado de insumos' },
   { id: 'CAR-004', name: 'Carteleria exterior', location: 'Palermo, Buenos Aires', progress: 12, budget: '$1.2M', accessCode: 'FILO-CAR-004', status: 'Relevamiento' },
 ];
 
@@ -80,7 +80,7 @@ const SUPPLIES = [
   { name: 'Sellador poliuretanico', stock: 18, unit: 'cartuchos', status: 'Comprar' },
   { name: 'Pintura elastomerica', stock: 7, unit: 'baldes', status: 'OK' },
   { name: 'Limpiavidrios y escurridores', stock: 5, unit: 'kits', status: 'OK' },
-  { name: 'Sustrato jardin vertical', stock: 9, unit: 'bolsas', status: 'Comprar' },
+  { name: 'Membrana liquida', stock: 9, unit: 'baldes', status: 'Comprar' },
   { name: 'Elementos de demarcacion', stock: 12, unit: 'u', status: 'OK' },
 ];
 
@@ -1441,7 +1441,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Insumos operativos</p>
                     <h2 className="text-3xl font-bold tracking-tight text-slate-900">Lo que el admin tiene que tener a mano</h2>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                      Control rápido de seguridad, materiales y herramientas para pintura vertical, limpieza de vidrios, jardinería vertical y cartelería.
+                      Control rápido de seguridad, materiales y herramientas para pintura vertical, limpieza de vidrios, impermeabilización y cartelería.
                     </p>
                   </div>
                   <Badge tone="green">{roleSupplies.length} items</Badge>

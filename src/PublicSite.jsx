@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ChevronRight,
   Droplets,
-  Flower2,
   HardHat,
   Instagram,
   Layers,
@@ -61,10 +60,15 @@ const LEAD_DEFAULTS = {
   message: '',
 };
 
-const PROJECT_TYPES = ['Impermeabilización de terraza', 'Fachada vertical / altura', 'Pintura', 'Refacción', 'Jardines / exteriores', 'Construcción'];
+const CONTACT_ROLES = ['Administrador', 'Propietario'];
+const PROJECT_TYPES = ['Impermeabilización de terraza', 'Fachada vertical / altura', 'Pintura', 'Refacción', 'Construcción'];
 const BUDGET_RANGES = ['A definir tras visita', 'Menos de ARS 1M', 'ARS 1M a 3M', 'ARS 3M a 8M', 'Más de ARS 8M'];
 const TIMELINES = ['Urgente por filtración', 'Inmediato', 'Dentro de 30 días', 'Más adelante'];
-const SERVICE_ICONS = [Droplets, Building2, HardHat, Paintbrush, Wrench, Flower2, Layers];
+const SERVICE_ICONS = [Droplets, Building2, HardHat, Paintbrush, Wrench, Layers];
+
+function hasGardenContent(item) {
+  return /jardin|jardín|jardines|jardiner/i.test([item.title, item.tag, item.desc].filter(Boolean).join(' '));
+}
 
 function buildLeadResult(form) {
   return {
@@ -99,6 +103,8 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
   const [active, setActive] = useState('inicio');
   const [leadForm, setLeadForm] = useState(LEAD_DEFAULTS);
   const [leadResult, setLeadResult] = useState(null);
+  const visibleProjects = content.projects.filter((project) => !hasGardenContent(project));
+  const visibleServices = content.services.filter((service) => !hasGardenContent(service));
 
   useEffect(() => {
     const onScroll = () => {
@@ -253,7 +259,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
           </div>
 
           <div className="grid gap-6 md:grid-cols-4">
-            {content.projects.map((project, index) => (
+            {visibleProjects.map((project, index) => (
               <a key={project.title} href={project.videoUrl || WHATSAPP_LINK} target="_blank" rel="noreferrer" className="group relative aspect-[9/16] overflow-hidden rounded-lg bg-zinc-900">
                 <img src={project.image} className="h-full w-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-105" alt={project.title} />
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -277,11 +283,11 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
             <span className="text-xs font-black uppercase tracking-widest text-orange-600">Prioridad comercial</span>
             <h3 className="mt-3 text-5xl font-black uppercase italic leading-none text-zinc-900 md:text-7xl">Impermeabilización primero</h3>
             <p className="mt-5 text-base leading-7 text-slate-600">
-              Nos enfocamos en resolver filtraciones, humedades y mantenimiento de superficies expuestas. También tomamos pintura, refacciones, trabajos verticales, jardines y construcciones cuando el alcance lo requiere.
+              Nos enfocamos en resolver filtraciones, humedades y mantenimiento de superficies expuestas. También tomamos pintura, refacciones, trabajos verticales y construcciones cuando el alcance lo requiere.
             </p>
           </div>
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {content.services.map((service, index) => (
+            {visibleServices.map((service, index) => (
               <ServiceCard
                 key={service.title}
                 icon={SERVICE_ICONS[index % SERVICE_ICONS.length]}
@@ -388,13 +394,18 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
 
                 <div>
                   <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.35em] text-zinc-400">Administrador o propietario</label>
-                  <input
-                    type="text"
+                  <select
                     value={leadForm.company}
                     onChange={(event) => setLeadForm((prev) => ({ ...prev, company: event.target.value }))}
                     className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
-                    placeholder="Opcional"
-                  />
+                  >
+                    <option value="">Seleccionar</option>
+                    {CONTACT_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -503,7 +514,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                     value={leadForm.message}
                     onChange={(event) => setLeadForm((prev) => ({ ...prev, message: event.target.value }))}
                     className="w-full resize-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition focus:border-orange-500 focus:bg-white"
-                    placeholder="Ej: terraza con filtraciones, fachada con grietas, humedad en techo, pintura exterior, refacción, jardín."
+                    placeholder="Ej: terraza con filtraciones, fachada con grietas, humedad en techo, pintura exterior o refacción."
                   />
                 </div>
 

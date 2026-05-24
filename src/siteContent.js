@@ -53,9 +53,9 @@
       videoUrl: '',
     },
     {
-      title: 'Jardines y Mantenimiento',
-      tag: 'Espacios exteriores',
-      image: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=1200&q=85',
+      title: 'Mantenimiento Integral',
+      tag: 'Refacciones',
+      image: 'https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=1200&q=85',
       videoUrl: '',
     },
   ],
@@ -82,10 +82,6 @@
     {
       title: 'Refacciones y mantenimiento',
       desc: 'Arreglos de obra, revoques, humedad, pisos, cielorrasos, baños, cocinas y mejoras generales por etapas.',
-    },
-    {
-      title: 'Jardines y exteriores',
-      desc: 'Puesta en valor de patios, jardines, canteros, accesos y sectores exteriores para viviendas, consorcios y comercios.',
     },
     {
       title: 'Construcciones',
