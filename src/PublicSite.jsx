@@ -46,7 +46,6 @@ const WHATSAPP_TEXT = encodeURIComponent(
   'Hola FILO, vi la web y quiero pedir presupuesto por impermeabilización de terraza o fachada vertical.'
 );
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_TEXT}`;
-const META_PIXEL_ID = '1042971535080886';
 
 const LEAD_DEFAULTS = {
   name: '',
@@ -98,27 +97,6 @@ function buildLeadWhatsappLink(form) {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 }
 
-function initMetaPixel() {
-  if (typeof window === 'undefined' || !META_PIXEL_ID) return;
-  if (window.fbq) return;
-
-  const fbq = (...args) => fbq.callMethod ? fbq.callMethod(...args) : fbq.queue.push(args);
-  window.fbq = fbq;
-  window._fbq = fbq;
-  fbq.push = fbq;
-  fbq.loaded = true;
-  fbq.version = '2.0';
-  fbq.queue = [];
-
-  const script = document.createElement('script');
-  script.async = true;
-  script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-  document.head.appendChild(script);
-
-  window.fbq('init', META_PIXEL_ID);
-  window.fbq('track', 'PageView');
-}
-
 function trackMetaEvent(eventName, params = {}) {
   if (typeof window === 'undefined' || !window.fbq) return;
   window.fbq('track', eventName, params);
@@ -132,10 +110,6 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
   const [leadResult, setLeadResult] = useState(null);
   const visibleProjects = content.projects.filter((project) => !hasGardenContent(project));
   const visibleServices = content.services.filter((service) => !hasGardenContent(service));
-
-  useEffect(() => {
-    initMetaPixel();
-  }, []);
 
   useEffect(() => {
     const onScroll = () => {
