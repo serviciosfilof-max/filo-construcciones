@@ -46,6 +46,7 @@ const WHATSAPP_TEXT = encodeURIComponent(
   'Hola FILO, vi la web y quiero pedir presupuesto por impermeabilización de terraza o fachada vertical.'
 );
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_TEXT}`;
+const META_PIXEL_ID = '1042971535080886';
 
 const LEAD_DEFAULTS = {
   name: '',
@@ -97,6 +98,32 @@ function buildLeadWhatsappLink(form) {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 }
 
+function initMetaPixel() {
+  if (typeof window === 'undefined' || !META_PIXEL_ID) return;
+  if (window.fbq) return;
+
+  const fbq = (...args) => fbq.callMethod ? fbq.callMethod(...args) : fbq.queue.push(args);
+  window.fbq = fbq;
+  window._fbq = fbq;
+  fbq.push = fbq;
+  fbq.loaded = true;
+  fbq.version = '2.0';
+  fbq.queue = [];
+
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+  document.head.appendChild(script);
+
+  window.fbq('init', META_PIXEL_ID);
+  window.fbq('track', 'PageView');
+}
+
+function trackMetaEvent(eventName, params = {}) {
+  if (typeof window === 'undefined' || !window.fbq) return;
+  window.fbq('track', eventName, params);
+}
+
 export default function PublicSite({ onEnterInternal, content = defaultSiteContent }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -105,6 +132,10 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
   const [leadResult, setLeadResult] = useState(null);
   const visibleProjects = content.projects.filter((project) => !hasGardenContent(project));
   const visibleServices = content.services.filter((service) => !hasGardenContent(service));
+
+  useEffect(() => {
+    initMetaPixel();
+  }, []);
 
   useEffect(() => {
     const onScroll = () => {
@@ -139,8 +170,19 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
 
   const handleLeadSubmit = (event) => {
     event.preventDefault();
+    trackMetaEvent('Lead', {
+      content_name: 'Formulario de presupuesto',
+      content_category: leadForm.projectType || 'Consulta',
+    });
     setLeadResult(buildLeadResult(leadForm));
     window.open(buildLeadWhatsappLink(leadForm), '_blank', 'noopener,noreferrer');
+  };
+
+  const handleWhatsappClick = (source) => {
+    trackMetaEvent('Contact', {
+      content_name: source,
+      content_category: 'WhatsApp',
+    });
   };
 
   return (
@@ -349,7 +391,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                 </div>
                 <div className="rounded-3xl border border-white/10 bg-black/20 p-5 sm:col-span-2">
                   <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/50">WhatsApp directo</p>
-                  <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-lg font-bold text-orange-300 transition hover:text-orange-200">
+                  <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" onClick={() => handleWhatsappClick('WhatsApp directo')} className="mt-3 inline-flex items-center gap-2 text-lg font-bold text-orange-300 transition hover:text-orange-200">
                     {content.contact.phone}
                     <ArrowRight className="h-4 w-4" />
                   </a>
@@ -357,7 +399,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
               </div>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-[0.25em] text-white transition hover:bg-orange-500">
+                <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" onClick={() => handleWhatsappClick('CTA presupuesto')} className="inline-flex items-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-[0.25em] text-white transition hover:bg-orange-500">
                   <MessageCircle className="h-4 w-4" />
                   Consultar por WhatsApp
                 </a>
@@ -523,7 +565,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                     <Send className="h-4 w-4" />
                     Pedir presupuesto
                   </button>
-                  <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-zinc-200 px-6 py-4 text-sm font-black uppercase tracking-[0.25em] text-zinc-900 transition hover:border-orange-500 hover:text-orange-600">
+                  <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" onClick={() => handleWhatsappClick('Boton formulario')} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-zinc-200 px-6 py-4 text-sm font-black uppercase tracking-[0.25em] text-zinc-900 transition hover:border-orange-500 hover:text-orange-600">
                     <MessageCircle className="h-4 w-4" />
                     Consultar por WhatsApp
                   </a>
@@ -541,7 +583,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                   </div>
                   <p className="mt-4 text-sm leading-7 text-zinc-700">{leadResult.nextStep}</p>
                   <div className="mt-5 flex flex-wrap gap-3">
-                    <a href={buildLeadWhatsappLink(leadForm)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-[0.25em] text-white transition hover:bg-orange-500">
+                    <a href={buildLeadWhatsappLink(leadForm)} target="_blank" rel="noreferrer" onClick={() => handleWhatsappClick('Resultado formulario')} className="inline-flex items-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-xs font-black uppercase tracking-[0.25em] text-white transition hover:bg-orange-500">
                       <MessageCircle className="h-4 w-4" />
                       Responder por WhatsApp
                     </a>
@@ -573,7 +615,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
         </div>
       </footer>
 
-      <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="fixed bottom-8 right-8 z-50 flex items-center justify-center rounded-full bg-green-500 p-4 text-white shadow-2xl transition-transform hover:scale-110">
+      <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" onClick={() => handleWhatsappClick('Boton flotante')} className="fixed bottom-8 right-8 z-50 flex items-center justify-center rounded-full bg-green-500 p-4 text-white shadow-2xl transition-transform hover:scale-110">
         <MessageCircle size={32} />
       </a>
     </div>
