@@ -1,11 +1,11 @@
 ﻿export const defaultSiteContent = {
   logoUrl: 'https://cdn.shopify.com/s/files/1/0995/6432/3185/files/FILO.png?v=1775935955',
   hero: {
-    eyebrow: 'Impermeabilización, pintura y trabajos en altura',
-    title: 'Terrazas y fachadas',
-    accent: 'Sin filtraciones.',
-    subtitle: 'FILO resuelve impermeabilización de terrazas, fachadas verticales, pintura, refacciones y mantenimiento con equipos preparados para obra tradicional y trabajos en altura.',
-    primaryCta: 'Cotizar Impermeabilización',
+    eyebrow: 'Fachadas, pintura y trabajos verticales',
+    title: 'Soluciones en altura',
+    accent: 'Para tu fachada.',
+    subtitle: 'FILO resuelve pintura exterior, fachadas verticales, impermeabilización, sellados y mantenimiento con equipos preparados para trabajos en altura y accesos complejos.',
+    primaryCta: 'Cotizar trabajo en altura',
     secondaryCta: 'Ver Trabajos',
     image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1800&q=88',
   },
