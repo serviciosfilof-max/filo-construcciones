@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 import { getSupabaseUrl, normalizeText } from './_supabase.js';
 
 const BUCKET = 'site-assets';
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
   const isAdmin = await ensureAdmin(supabase, actorId);
 
   if (!isAdmin || !ensureAdminPassword(body.adminPassword)) {
-    return send(res, 403, { error: 'Solo un administrador puede subir imágenes.' });
+    return send(res, 403, { error: 'Solo un administrador puede subir archivos.' });
   }
 
   const fileName = normalizeText(body.fileName);
@@ -91,12 +91,12 @@ export default async function handler(req, res) {
   }
 
   if (!ALLOWED_MIME_PREFIXES.some((prefix) => parsed.mimeType.startsWith(prefix))) {
-    return send(res, 400, { error: 'Solo se permiten imágenes o videos.' });
+    return send(res, 400, { error: 'Solo se permiten imagenes o videos.' });
   }
 
   const buffer = Buffer.from(parsed.base64, 'base64');
   if (buffer.byteLength > MAX_FILE_SIZE_BYTES) {
-    return send(res, 413, { error: 'El archivo supera el máximo de 80 MB.' });
+    return send(res, 413, { error: 'El archivo supera el mÃ¡ximo de 80 MB.' });
   }
 
   const ext = (fileName.split('.').pop() || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -120,3 +120,4 @@ export default async function handler(req, res) {
     path: objectPath,
   });
 }
+

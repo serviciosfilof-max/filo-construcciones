@@ -66,6 +66,13 @@ const BUDGET_RANGES = ['A definir tras visita', 'Menos de ARS 1M', 'ARS 1M a 3M'
 const TIMELINES = ['Urgente por filtración', 'Inmediato', 'Dentro de 30 días', 'Más adelante'];
 const SERVICE_ICONS = [Droplets, Building2, HardHat, Paintbrush, Wrench, Layers];
 
+function isPlayableVideoUrl(value) {
+  if (!value) return false;
+  if (/^data:video\//i.test(value)) return true;
+  const cleanUrl = value.split('?')[0].split('#')[0].toLowerCase();
+  return ['.mp4', '.webm', '.ogg', '.mov', '.m4v'].some((extension) => cleanUrl.endsWith(extension));
+}
+
 function hasGardenContent(item) {
   return /jardin|jardín|jardines|jardiner/i.test([item.title, item.tag, item.desc].filter(Boolean).join(' '));
 }
@@ -275,20 +282,45 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
           </div>
 
           <div className="grid gap-6 md:grid-cols-4">
-            {visibleProjects.map((project, index) => (
-              <a key={project.title} href={project.videoUrl || WHATSAPP_LINK} target="_blank" rel="noreferrer" className="group relative aspect-[9/16] overflow-hidden rounded-lg bg-zinc-900">
-                <img src={project.image} className="h-full w-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-105" alt={project.title} />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-colors group-hover:bg-orange-600">
-                    <Play fill="white" size={24} />
+            {visibleProjects.map((project, index) => {
+              const hasPlayableVideo = isPlayableVideoUrl(project.videoUrl);
+
+              return (
+                <a
+                  key={project.title}
+                  href={project.videoUrl || WHATSAPP_LINK}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group relative aspect-[9/16] overflow-hidden rounded-lg bg-zinc-900"
+                  aria-label={`Ver ${project.title}`}
+                >
+                  {hasPlayableVideo ? (
+                    <video
+                      src={project.videoUrl}
+                      poster={project.image}
+                      className="h-full w-full object-cover opacity-70 transition-transform duration-700 group-hover:scale-105"
+                      muted
+                      loop
+                      playsInline
+                      autoPlay
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img src={project.image} className="h-full w-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-105" alt={project.title} />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/15 to-transparent" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-colors group-hover:bg-orange-600">
+                      <Play fill="white" size={24} />
+                    </div>
                   </div>
-                </div>
-                <div className="absolute bottom-6 left-6">
-                  <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-orange-500">{project.tag || `PROYECTO 0${index + 1}`}</p>
-                  <p className="text-lg font-bold uppercase italic">{project.title}</p>
-                </div>
-              </a>
-            ))}
+                  <div className="absolute bottom-6 left-6 right-6">
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-orange-500">{project.tag || `PROYECTO 0${index + 1}`}</p>
+                    <p className="text-lg font-bold uppercase italic">{project.title}</p>
+                  </div>
+                </a>
+              );
+            })}
           </div>
         </div>
       </section>

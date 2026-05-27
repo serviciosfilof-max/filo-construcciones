@@ -248,20 +248,35 @@ function StatCard({ label, value, detail }) {
   );
 }
 
-function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false, helpText = 'Pega una URL o sube una imagen.', accept = 'image/*', mediaType = 'image', optional = false }) {
+function ImageFieldEditor({
+  label,
+  value,
+  onChange,
+  onUpload,
+  onClear,
+  uploading = false,
+  helpText = 'Pega una URL o sube una imagen.',
+  accept = 'image/*',
+  mediaType = 'image',
+  optional = false,
+  showUrlInput = true,
+}) {
   const fileInputRef = React.useRef(null);
   const previewUrl = normalizeOptionalMediaUrl(value);
+  const mediaLabel = mediaType === 'video' ? 'video' : 'imagen';
 
   return (
     <div>
       <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">{label}</label>
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3">
-        <input
-          value={value}
-          onChange={onChange}
-          placeholder={optional ? 'Opcional: pegá una URL de imagen o subí una foto' : undefined}
-          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
-        />
+        {showUrlInput && (
+          <input
+            value={value}
+            onChange={onChange}
+            placeholder={optional ? 'Opcional: pegá una URL de imagen o subí una foto' : undefined}
+            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+          />
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -272,10 +287,19 @@ function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false,
             <Upload size={14} />
             {uploading ? 'Subiendo...' : mediaType === 'video' ? 'Subir video' : 'Subir foto'}
           </button>
+          {!showUrlInput && previewUrl && (
+            <button
+              type="button"
+              onClick={onClear}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 transition hover:border-red-200 hover:text-red-600"
+            >
+              Quitar archivo
+            </button>
+          )}
           <span className="text-[11px] text-slate-500">{helpText}</span>
         </div>
         <p className="text-[11px] leading-5 text-slate-400">
-          Al subir un archivo, se guarda en Supabase Storage y esta URL se completa sola.
+          Al subir un archivo, se guarda en Supabase Storage y queda conectado al sitio.
         </p>
         <input
           ref={fileInputRef}
@@ -292,6 +316,11 @@ function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false,
         {previewUrl && mediaType === 'video' ? (
           <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-950">
             <video src={previewUrl} className="h-36 w-full object-cover" controls muted playsInline />
+            {!showUrlInput && (
+              <div className="border-t border-white/10 bg-slate-900 px-3 py-2 text-[11px] font-semibold text-slate-300">
+                Video guardado en Supabase Storage.
+              </div>
+            )}
           </div>
         ) : previewUrl ? (
           <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
@@ -301,7 +330,7 @@ function ImageFieldEditor({ label, value, onChange, onUpload, uploading = false,
           <div className="flex h-36 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-slate-400">
             <div className="text-center">
               <Image className="mx-auto mb-2" size={24} />
-              <p className="text-xs font-semibold">Sin imagen</p>
+              <p className="text-xs font-semibold">Sin {mediaLabel}</p>
             </div>
           </div>
         )}
@@ -1707,16 +1736,18 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                           <ImageFieldEditor
                             label={`Video del proyecto ${index + 1}`}
                             value={project.videoUrl || ''}
-                            onChange={(event) =>
+                            onChange={() => {}}
+                            onClear={() =>
                               updateContent((prev) => ({
                                 ...prev,
-                                projects: prev.projects.map((entry, i) => (i === index ? { ...entry, videoUrl: event.target.value } : entry)),
+                                projects: prev.projects.map((entry, i) => (i === index ? { ...entry, videoUrl: '' } : entry)),
                               }))
                             }
                             uploading={imageUploadingKey === `project-video-${index}`}
-                            helpText="Sube un video corto o pega un link de Instagram/YouTube."
+                            helpText="Subí un video corto. Se guarda en Supabase y aparece en la web."
                             accept="video/*"
                             mediaType="video"
+                            showUrlInput={false}
                             onUpload={(file) =>
                               handleUploadMedia(
                                 `project-video-${index}`,
