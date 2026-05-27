@@ -267,10 +267,12 @@ function ImageFieldEditor({
   mediaType = 'image',
   optional = false,
   showUrlInput = true,
+  uploadLabel,
 }) {
   const fileInputRef = React.useRef(null);
   const previewUrl = normalizeOptionalMediaUrl(value);
-  const mediaLabel = mediaType === 'video' ? 'video' : 'imagen';
+  const isVideoPreview = mediaType === 'video' || isPlayableVideoUrl(previewUrl);
+  const mediaLabel = isVideoPreview ? 'video' : 'imagen';
 
   return (
     <div>
@@ -292,7 +294,7 @@ function ImageFieldEditor({
             className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white transition hover:bg-[#1F6B3F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Upload size={14} />
-            {uploading ? 'Subiendo...' : mediaType === 'video' ? 'Subir video' : 'Subir foto'}
+            {uploading ? 'Subiendo...' : uploadLabel || (mediaType === 'video' ? 'Subir video' : 'Subir foto')}
           </button>
           {!showUrlInput && previewUrl && (
             <button
@@ -320,7 +322,7 @@ function ImageFieldEditor({
             await onUpload(file);
           }}
         />
-        {previewUrl && mediaType === 'video' ? (
+        {previewUrl && isVideoPreview ? (
           <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-950">
             <video src={previewUrl} className="h-36 w-full object-cover" controls muted playsInline />
             {!showUrlInput && (
@@ -1603,6 +1605,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       helpText="Subí una foto o video para el fondo del banner."
                       accept="image/*,video/*"
                       mediaType={isPlayableVideoUrl(content.hero.image) ? 'video' : 'image'}
+                      uploadLabel="Subir imagen/video"
                       onUpload={(file) => handleUploadMedia('hero.image', (prev, url) => ({ ...prev, hero: { ...prev.hero, image: url } }), file)}
                     />
                   </div>

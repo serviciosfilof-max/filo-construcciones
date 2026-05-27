@@ -35,3 +35,13 @@ img {
   display: block;
   max-width: 100%;
 }
+
+@keyframes filo-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}

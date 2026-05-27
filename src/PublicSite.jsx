@@ -8,7 +8,6 @@ import {
   HardHat,
   Instagram,
   Layers,
-  Mail,
   MapPin,
   Menu,
   MessageCircle,
@@ -189,10 +188,6 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                 {content.contact.phone}
               </span>
               <span className="inline-flex items-center gap-3">
-                <Mail className="h-4 w-4 text-orange-500" />
-                presupuestos@filo.com
-              </span>
-              <span className="inline-flex items-center gap-3">
                 <MapPin className="h-4 w-4 text-orange-500" />
                 Buenos Aires
               </span>
@@ -227,6 +222,20 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
             </button>
           </div>
         </nav>
+        <div className="hidden overflow-hidden bg-[#050b16] py-2 text-white lg:block">
+          <div className="animate-[filo-marquee_24s_linear_infinite] whitespace-nowrap text-[10px] font-black uppercase tracking-[0.28em] text-white/72">
+            <span className="mx-8 text-orange-500">Soluciones en altura</span>
+            <span className="mx-8">Fachadas verticales</span>
+            <span className="mx-8">Pintura exterior</span>
+            <span className="mx-8">Impermeabilización</span>
+            <span className="mx-8">Trabajos con silleta</span>
+            <span className="mx-8 text-orange-500">Soluciones en altura</span>
+            <span className="mx-8">Fachadas verticales</span>
+            <span className="mx-8">Pintura exterior</span>
+            <span className="mx-8">Impermeabilización</span>
+            <span className="mx-8">Trabajos con silleta</span>
+          </div>
+        </div>
       </header>
 
       <div className={`fixed inset-0 z-[60] flex flex-col items-center justify-center gap-8 bg-[#071226] text-white transition-transform duration-500 lg:hidden ${menuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
@@ -245,14 +254,14 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
       </div>
 
       <main>
-        <section id="inicio" className="relative flex min-h-[760px] items-center overflow-hidden bg-[#071226] pt-[58px] lg:pt-[138px]">
+        <section id="inicio" className="relative flex min-h-[860px] items-center overflow-hidden bg-[#071226] pt-[58px] lg:pt-[164px]">
           {isPlayableVideoUrl(content.hero.image) ? (
             <video src={content.hero.image} className="absolute inset-0 h-full w-full object-cover opacity-45" muted loop playsInline autoPlay preload="metadata" aria-label="Obra FILO" />
           ) : (
             <img src={content.hero.image} className="absolute inset-0 h-full w-full object-cover opacity-45" alt="Obra FILO" />
           )}
           <div className="absolute inset-0 bg-black/45" />
-          <div className="container relative z-10 mx-auto px-6 text-center text-white">
+          <div className="container relative z-10 mx-auto px-6 pb-24 text-center text-white lg:pb-32">
             <div className="mx-auto max-w-5xl">
               <h1 className="text-5xl font-black uppercase leading-[1.02] tracking-[0.01em] md:text-7xl lg:text-[5.8rem]">
                 Soluciones en altura
