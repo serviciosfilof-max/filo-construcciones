@@ -34,7 +34,7 @@ const WHATSAPP_TEXT = encodeURIComponent(
   'Hola FILO, vi la web y quiero pedir presupuesto por trabajos en altura o fachada.'
 );
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_TEXT}`;
-const WHITE_LOGO_URL = '/filo-logo-white.svg';
+const WHITE_LOGO_URL = '/filo-logo-white.png';
 
 const LEAD_DEFAULTS = {
   name: '',
@@ -180,7 +180,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
         <div className="hidden bg-[#071226] text-white lg:block">
           <div className="container mx-auto flex items-center justify-between px-6 py-4">
             <button onClick={() => goTo('inicio')} className="flex items-center">
-              <img src={WHITE_LOGO_URL} alt="FILO Constructora" className="h-16 object-contain" />
+            <img src={WHITE_LOGO_URL} alt="FILO Constructora" className="h-20 object-contain" />
             </button>
             <div className="flex items-center gap-8 text-[11px] font-bold uppercase tracking-[0.12em] text-white/78">
               <span className="inline-flex items-center gap-3">
@@ -197,7 +197,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
 
         <nav className="bg-orange-600 text-white shadow-xl shadow-black/15">
           <div className="container mx-auto flex h-[58px] items-center justify-between px-6">
-            <img src={WHITE_LOGO_URL} alt="FILO Constructora" className="h-12 object-contain lg:hidden" />
+            <img src={WHITE_LOGO_URL} alt="FILO Constructora" className="h-14 object-contain lg:hidden" />
             <div className="hidden items-center gap-9 lg:flex">
               {content.sections.map((item) => (
                 <button
@@ -290,7 +290,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                 Obra ordenada, segura y visible.
               </h2>
               <p className="mt-6 max-w-xl text-sm font-medium leading-7 text-white/82">
-                La web ahora comunica como una constructora: presencia fuerte, contraste, servicios claros y foco en trabajos en altura.
+                Fachadas, pintura exterior, impermeabilización y mantenimiento ejecutados con planificación, seguridad y seguimiento claro.
               </p>
               <button onClick={() => goTo('servicios')} className="mt-9 border border-white/70 px-7 py-4 text-xs font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-orange-600">
                 Ver servicios
@@ -432,7 +432,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
 
       <footer className="bg-[#050b16] py-12 text-white">
         <div className="container mx-auto flex flex-col items-center justify-between gap-8 px-6 md:flex-row">
-          <img src={WHITE_LOGO_URL} alt="Filo Constructora" className="h-16" />
+          <img src={WHITE_LOGO_URL} alt="Filo Constructora" className="h-20" />
           <div className="flex flex-wrap justify-center gap-x-10 gap-y-3">
             {content.sections.map((item) => (
               <button key={item.id} onClick={() => goTo(item.id)} className="text-[10px] font-black uppercase tracking-[0.18em] text-white/70 hover:text-orange-500">
