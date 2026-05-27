@@ -46,6 +46,7 @@ const WHATSAPP_TEXT = encodeURIComponent(
   'Hola FILO, vi la web y quiero pedir presupuesto por impermeabilización de terraza o fachada vertical.'
 );
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_TEXT}`;
+const WHITE_LOGO_URL = '/filo-logo-white.svg';
 
 const LEAD_DEFAULTS = {
   name: '',
@@ -168,10 +169,10 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 selection:bg-orange-500 selection:text-white">
-      <nav className={`fixed z-50 w-full transition-all duration-500 ${scrolled ? 'bg-white/95 py-3 shadow-sm backdrop-blur' : 'bg-transparent py-6'}`}>
+      <nav className={`fixed z-50 w-full transition-all duration-500 ${scrolled ? 'bg-zinc-950/95 py-3 shadow-xl shadow-black/10 backdrop-blur' : 'bg-transparent py-6'}`}>
         <div className="container mx-auto flex items-center justify-between px-6">
           <button onClick={() => goTo('inicio')} className="flex items-center">
-            <img src={content.logoUrl} alt="FILO Constructora" className="h-10 object-contain md:h-14" />
+            <img src={WHITE_LOGO_URL} alt="FILO Constructora" className="h-12 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.35)] md:h-16" />
           </button>
 
           <div className="hidden items-center gap-10 md:flex">
@@ -179,22 +180,22 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
               <button
                 key={item.id}
                 onClick={() => goTo(item.id)}
-                className={`relative py-2 text-[11px] font-black uppercase tracking-[0.2em] transition ${active === item.id ? 'text-orange-600' : scrolled ? 'text-zinc-600' : 'text-white'} hover:text-orange-500`}
+                className={`relative py-2 text-[11px] font-black uppercase tracking-[0.2em] transition ${active === item.id ? 'text-orange-500' : 'text-white/90'} hover:text-orange-500`}
               >
                 {item.label}
                 {active === item.id && <span className="absolute bottom-0 left-0 h-0.5 w-full bg-orange-600" />}
               </button>
             ))}
-            <button onClick={onEnterInternal} className="rounded-full bg-zinc-900 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-orange-600">
+            <button onClick={onEnterInternal} className="rounded-full bg-zinc-900 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white ring-1 ring-white/10 transition hover:bg-orange-600">
               Acceso interno
             </button>
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" className="rounded-full bg-zinc-900 p-2 text-white transition hover:bg-orange-600">
+            <a href="https://instagram.com" target="_blank" rel="noreferrer" className="rounded-full bg-zinc-900 p-2 text-white ring-1 ring-white/10 transition hover:bg-orange-600">
               <Instagram size={20} />
             </a>
           </div>
 
           <button className="p-2 md:hidden" onClick={() => setMenuOpen((v) => !v)}>
-            {menuOpen ? <X /> : <Menu className={scrolled ? 'text-zinc-900' : 'text-white'} />}
+            {menuOpen ? <X /> : <Menu className="text-white" />}
           </button>
         </div>
       </nav>
@@ -214,7 +215,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
       </div>
 
       <section id="inicio" className="relative flex h-[90vh] items-center overflow-hidden bg-zinc-900">
-        <div className="absolute inset-0 z-10 bg-gradient-to-r from-zinc-950/80 to-transparent" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-b from-zinc-950/55 via-zinc-950/58 to-zinc-950/76" />
         {isPlayableVideoUrl(content.hero.image) ? (
           <video
             src={content.hero.image}
@@ -230,11 +231,12 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
           <img src={content.hero.image} className="absolute inset-0 h-full w-full object-cover opacity-60" alt="Obra FILO" />
         )}
         <div className="container relative z-20 mx-auto px-6 text-white">
-          <div className="max-w-4xl">
-            <h1 className="mb-8 max-w-5xl text-6xl font-black uppercase italic leading-[0.9] tracking-tighter md:text-9xl">
+          <div className="mx-auto max-w-5xl text-center">
+            <h1 className="mb-8 text-5xl font-black uppercase leading-[1.02] tracking-[0.02em] md:text-7xl lg:text-8xl">
               Soluciones <span className="block text-orange-500">en altura</span>
             </h1>
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+            <div className="mx-auto h-1.5 w-24 bg-orange-600" />
+            <div className="mt-9 flex flex-col justify-center gap-4 sm:flex-row">
               <button onClick={() => goTo('presupuesto')} className="bg-orange-600 px-10 py-5 text-sm font-black uppercase tracking-widest text-white transition hover:bg-white hover:text-zinc-900">
                 {content.hero.primaryCta}
               </button>
