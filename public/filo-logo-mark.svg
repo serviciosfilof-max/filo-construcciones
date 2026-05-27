@@ -1,0 +1,12 @@
+<svg width="240" height="130" viewBox="0 0 240 130" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FILO Constructora">
+  <path d="M48 54C76 45 103 42 124 43C147 44 170 48 196 55" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  <path d="M66 50V32L91 22V50" stroke="white" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M101 48V16L128 4L155 16V49" stroke="white" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M164 51V28L188 39V55" stroke="white" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M83 31V49M115 18V48M138 17V48M176 36V52" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <path d="M36 98V63H82V74H51V79H78V89H51V98H36Z" fill="white"/>
+  <path d="M91 98V63H106V98H91Z" fill="white"/>
+  <path d="M116 98V63H131V86H164V98H116Z" fill="white"/>
+  <path d="M190 99C172 99 163 92 163 80.5C163 69 172 62 190 62C208 62 217 69 217 80.5C217 92 208 99 190 99ZM190 87C198 87 202 85 202 80.5C202 76 198 74 190 74C182 74 178 76 178 80.5C178 85 182 87 190 87Z" fill="white"/>
+  <text x="120" y="120" text-anchor="middle" fill="white" font-family="Montserrat, Arial, sans-serif" font-size="10" font-weight="800" letter-spacing="3">CONSTRUCTORA</text>
+</svg>

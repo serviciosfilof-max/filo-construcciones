@@ -34,7 +34,7 @@ const WHATSAPP_TEXT = encodeURIComponent(
   'Hola FILO, vi la web y quiero pedir presupuesto por trabajos en altura o fachada.'
 );
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_TEXT}`;
-const WHITE_LOGO_URL = '/filo-logo-white.png';
+const WHITE_LOGO_URL = '/filo-logo-mark.svg';
 
 const LEAD_DEFAULTS = {
   name: '',
@@ -279,7 +279,19 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
               </div>
             </div>
           </div>
-          <div className="absolute bottom-[-1px] left-0 right-0 z-20 h-20 bg-orange-600" style={{ clipPath: 'polygon(0 58%, 10% 45%, 22% 62%, 36% 48%, 49% 60%, 65% 42%, 80% 58%, 100% 45%, 100% 100%, 0 100%)' }} />
+          <div className="absolute bottom-[-1px] left-0 right-0 z-20 h-28 overflow-hidden">
+            <svg className="h-full w-full" viewBox="0 0 1440 130" preserveAspectRatio="none" aria-hidden="true">
+              <path
+                d="M0 52L58 47L116 36L174 44L232 31L290 42L348 39L406 51L464 33L522 37L580 48L638 35L696 44L754 30L812 41L870 34L928 45L986 39L1044 27L1102 43L1160 36L1218 49L1276 40L1334 45L1392 32L1440 38V130H0V52Z"
+                fill="#ea580c"
+              />
+              <path
+                d="M0 67L90 58L180 65L270 52L360 61L450 58L540 68L630 55L720 62L810 57L900 70L990 54L1080 63L1170 57L1260 69L1350 60L1440 64V130H0V67Z"
+                fill="#f05a0a"
+                opacity="0.92"
+              />
+            </svg>
+          </div>
         </section>
 
         <section id="empresa" className="bg-orange-600 py-24 text-white">
