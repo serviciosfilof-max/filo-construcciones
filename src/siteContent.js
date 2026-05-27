@@ -1,10 +1,10 @@
 ﻿export const defaultSiteContent = {
   logoUrl: 'https://cdn.shopify.com/s/files/1/0995/6432/3185/files/FILO.png?v=1775935955',
   hero: {
-    eyebrow: 'Fachadas, pintura y trabajos verticales',
+    eyebrow: '',
     title: 'Soluciones en altura',
-    accent: 'Para tu fachada.',
-    subtitle: 'FILO resuelve pintura exterior, fachadas verticales, impermeabilización, sellados y mantenimiento con equipos preparados para trabajos en altura y accesos complejos.',
+    accent: '',
+    subtitle: '',
     primaryCta: 'Cotizar trabajo en altura',
     secondaryCta: 'Ver Trabajos',
     image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1800&q=88',

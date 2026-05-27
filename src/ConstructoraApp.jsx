@@ -139,6 +139,13 @@ function normalizeOptionalMediaUrl(value) {
   }
 }
 
+function isPlayableVideoUrl(value) {
+  if (!value) return false;
+  if (/^data:video\//i.test(value)) return true;
+  const cleanUrl = value.split('?')[0].split('#')[0].toLowerCase();
+  return ['.mp4', '.webm', '.ogg', '.mov', '.m4v'].some((extension) => cleanUrl.endsWith(extension));
+}
+
 function makeQrPayload(user) {
   return `CTLOGIN|${user.id}|${user.email.toLowerCase()}|${user.role}`;
 }
@@ -1589,11 +1596,13 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
 
                   <div>
                     <ImageFieldEditor
-                      label="Imagen principal"
+                      label="Imagen o video principal"
                       value={content.hero.image}
                       onChange={(event) => updateContent((prev) => ({ ...prev, hero: { ...prev.hero, image: event.target.value } }))}
                       uploading={imageUploadingKey === 'hero.image'}
-                      helpText="Sube una foto fuerte para la cabecera."
+                      helpText="Subí una foto o video para el fondo del banner."
+                      accept="image/*,video/*"
+                      mediaType={isPlayableVideoUrl(content.hero.image) ? 'video' : 'image'}
                       onUpload={(file) => handleUploadMedia('hero.image', (prev, url) => ({ ...prev, hero: { ...prev.hero, image: url } }), file)}
                     />
                   </div>

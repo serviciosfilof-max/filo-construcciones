@@ -215,17 +215,25 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
 
       <section id="inicio" className="relative flex h-[90vh] items-center overflow-hidden bg-zinc-900">
         <div className="absolute inset-0 z-10 bg-gradient-to-r from-zinc-950/80 to-transparent" />
-        <img src={content.hero.image} className="absolute inset-0 h-full w-full object-cover opacity-60" alt="Obra FILO" />
+        {isPlayableVideoUrl(content.hero.image) ? (
+          <video
+            src={content.hero.image}
+            className="absolute inset-0 h-full w-full object-cover opacity-60"
+            muted
+            loop
+            playsInline
+            autoPlay
+            preload="metadata"
+            aria-label="Obra FILO"
+          />
+        ) : (
+          <img src={content.hero.image} className="absolute inset-0 h-full w-full object-cover opacity-60" alt="Obra FILO" />
+        )}
         <div className="container relative z-20 mx-auto px-6 text-white">
           <div className="max-w-4xl">
-            <div className="mb-6 flex items-center gap-4">
-              <span className="h-0.5 w-12 bg-orange-600" />
-              <span className="text-xs font-black uppercase tracking-[0.3em]">{content.hero.eyebrow}</span>
-            </div>
-            <h1 className="mb-8 text-6xl font-black uppercase italic leading-[0.9] tracking-tighter md:text-9xl">
-              {content.hero.title} <br /> <span className="text-orange-500">{content.hero.accent}</span>
+            <h1 className="mb-8 max-w-5xl text-6xl font-black uppercase italic leading-[0.9] tracking-tighter md:text-9xl">
+              Soluciones <span className="block text-orange-500">en altura</span>
             </h1>
-            <p className="max-w-2xl text-base leading-7 text-white/75 md:text-lg">{content.hero.subtitle}</p>
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
               <button onClick={() => goTo('presupuesto')} className="bg-orange-600 px-10 py-5 text-sm font-black uppercase tracking-widest text-white transition hover:bg-white hover:text-zinc-900">
                 {content.hero.primaryCta}
