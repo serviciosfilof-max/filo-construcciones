@@ -1691,6 +1691,17 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                             }
                           />
                         </div>
+                        <input
+                          value={project.youtubeUrl || ''}
+                          onChange={(event) =>
+                            updateContent((prev) => ({
+                              ...prev,
+                              projects: prev.projects.map((entry, i) => (i === index ? { ...entry, youtubeUrl: event.target.value } : entry)),
+                            }))
+                          }
+                          placeholder="Link de YouTube del video completo"
+                          className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]"
+                        />
                       </div>
                     ))}
                   </div>

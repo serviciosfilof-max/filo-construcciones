@@ -68,6 +68,45 @@ function isPlayableVideoUrl(value) {
   return ['.mp4', '.webm', '.ogg', '.mov', '.m4v'].some((extension) => cleanUrl.endsWith(extension));
 }
 
+function normalizeExternalUrl(value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
+function getYouTubeEmbedUrl(value) {
+  const normalized = normalizeExternalUrl(value);
+  if (!normalized) return '';
+
+  try {
+    const url = new URL(normalized);
+    const host = url.hostname.replace(/^www\./, '');
+    let videoId = '';
+
+    if (host === 'youtu.be') {
+      videoId = url.pathname.split('/').filter(Boolean)[0] || '';
+    } else if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+      if (url.pathname.startsWith('/shorts/')) {
+        videoId = url.pathname.split('/').filter(Boolean)[1] || '';
+      } else if (url.pathname.startsWith('/embed/')) {
+        videoId = url.pathname.split('/').filter(Boolean)[1] || '';
+      } else {
+        videoId = url.searchParams.get('v') || '';
+      }
+    }
+
+    return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0` : '';
+  } catch {
+    return '';
+  }
+}
+
 function hasGardenContent(item) {
   return /jardin|jardín|jardines|jardiner/i.test([item.title, item.tag, item.desc].filter(Boolean).join(' '));
 }
@@ -129,6 +168,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
   const [active, setActive] = useState('inicio');
   const [leadForm, setLeadForm] = useState(LEAD_DEFAULTS);
   const [leadResult, setLeadResult] = useState(null);
+  const [activeProjectVideo, setActiveProjectVideo] = useState(null);
   const visibleProjects = content.projects.filter((project) => !hasGardenContent(project));
   const visibleServices = content.services.filter((service) => !hasGardenContent(service));
 
@@ -159,6 +199,22 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
   useEffect(() => {
     localStorage.setItem('filo_lead_intake_v1', JSON.stringify(leadForm));
   }, [leadForm]);
+
+  useEffect(() => {
+    if (!activeProjectVideo) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setActiveProjectVideo(null);
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeProjectVideo]);
 
   const handleLeadSubmit = (event) => {
     event.preventDefault();
@@ -335,8 +391,22 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
               {visibleProjects.map((project, index) => {
                 const hasPlayableVideo = isPlayableVideoUrl(project.videoUrl);
+                const youtubeEmbedUrl = getYouTubeEmbedUrl(project.youtubeUrl);
+                const directVideoUrl = normalizeExternalUrl(project.videoUrl);
                 return (
-                  <a key={project.title} href={project.videoUrl || WHATSAPP_LINK} target="_blank" rel="noreferrer" className="group relative aspect-[9/16] overflow-hidden bg-[#071226]" aria-label={`Ver ${project.title}`}>
+                  <button
+                    key={project.title}
+                    type="button"
+                    onClick={() => {
+                      if (youtubeEmbedUrl || directVideoUrl) {
+                        setActiveProjectVideo({ ...project, embedUrl: youtubeEmbedUrl, directVideoUrl });
+                      } else {
+                        goTo('presupuesto');
+                      }
+                    }}
+                    className="group relative aspect-[9/16] overflow-hidden bg-[#071226] text-left"
+                    aria-label={`Ver ${project.title}`}
+                  >
                     {hasPlayableVideo ? (
                       <video src={project.videoUrl} poster={project.image} className="h-full w-full object-cover opacity-75 transition duration-700 group-hover:scale-105" muted loop playsInline autoPlay preload="metadata" />
                     ) : (
@@ -352,7 +422,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                       <p className="mb-2 text-[10px] font-black uppercase tracking-[0.24em] text-orange-400">{project.tag || `Proyecto 0${index + 1}`}</p>
                       <h3 className="text-xl font-black uppercase text-white">{project.title}</h3>
                     </div>
-                  </a>
+                  </button>
                 );
               })}
             </div>
@@ -455,6 +525,36 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-white/42">{content.footer.copy}</div>
         </div>
       </footer>
+
+      {activeProjectVideo && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#050b16]/92 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Video ${activeProjectVideo.title}`}>
+          <button className="absolute inset-0 cursor-default" type="button" aria-label="Cerrar video" onClick={() => setActiveProjectVideo(null)} />
+          <div className="relative z-10 w-full max-w-5xl overflow-hidden bg-black shadow-2xl">
+            <div className="flex items-center justify-between gap-4 bg-[#071226] px-4 py-3 text-white">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-400">{activeProjectVideo.tag || 'Proyecto FILO'}</p>
+                <h3 className="text-sm font-black uppercase md:text-lg">{activeProjectVideo.title}</h3>
+              </div>
+              <button type="button" onClick={() => setActiveProjectVideo(null)} className="flex h-10 w-10 items-center justify-center bg-white/10 text-white transition hover:bg-orange-600" aria-label="Cerrar video">
+                <X size={22} />
+              </button>
+            </div>
+            <div className="aspect-video bg-black">
+              {activeProjectVideo.embedUrl ? (
+                <iframe
+                  src={activeProjectVideo.embedUrl}
+                  title={activeProjectVideo.title}
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              ) : (
+                <video src={activeProjectVideo.directVideoUrl} poster={activeProjectVideo.image} className="h-full w-full bg-black object-contain" controls autoPlay playsInline />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" onClick={() => handleWhatsappClick('Boton flotante')} className="fixed bottom-8 right-8 z-50 flex items-center justify-center rounded-full bg-green-500 p-4 text-white shadow-2xl transition hover:scale-110">
         <MessageCircle size={32} />

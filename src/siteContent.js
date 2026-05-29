@@ -39,24 +39,28 @@
       tag: 'Impermeabilización',
       image: 'https://images.unsplash.com/photo-1605152276897-4f618f831968?auto=format&fit=crop&w=1200&q=85',
       videoUrl: '',
+      youtubeUrl: '',
     },
     {
       title: 'Fachadas en Altura',
       tag: 'Silleta / verticales',
       image: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1200&q=85',
       videoUrl: '',
+      youtubeUrl: '',
     },
     {
       title: 'Pintura Exterior',
       tag: 'Terminaciones',
       image: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=1200&q=85',
       videoUrl: '',
+      youtubeUrl: '',
     },
     {
       title: 'Mantenimiento Integral',
       tag: 'Refacciones',
       image: 'https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=1200&q=85',
       videoUrl: '',
+      youtubeUrl: '',
     },
   ],
   services: [
