@@ -954,6 +954,21 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     }
   }, [activeTab, currentUser?.role]);
 
+  useEffect(() => {
+    if (activeTab !== 'clientes' || !progressForm.project_id) return;
+    const savedProgress = clientPortalProgress.find((entry) => entry.project_id === progressForm.project_id);
+    if (!savedProgress) return;
+    setProgressForm((prev) => ({
+      ...prev,
+      progress_percent: savedProgress.progress_percent ?? prev.progress_percent,
+      current_stage: savedProgress.current_stage || '',
+      next_step: savedProgress.next_step || '',
+      estimated_finish: savedProgress.estimated_finish || '',
+      summary: savedProgress.summary || '',
+      media_url: savedProgress.media_url || '',
+    }));
+  }, [activeTab, clientPortalProgress, progressForm.project_id]);
+
   const handleSaveClientAccess = async (event) => {
     event.preventDefault();
     setClientPortalMessage('');
@@ -1005,6 +1020,11 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     } finally {
       setImageUploadingKey('');
     }
+  };
+
+  const setProgressPercent = (value) => {
+    const percent = Math.max(0, Math.min(100, Number(value || 0)));
+    setProgressForm((prev) => ({ ...prev, progress_percent: String(percent) }));
   };
 
   const handleLogin = (user, adminPassword = '', progress = null) => {
@@ -1593,7 +1613,24 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                     <select value={progressForm.project_id} onChange={(event) => setProgressForm((prev) => ({ ...prev, project_id: event.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
                       {PROJECTS.map((project) => <option key={project.id} value={project.id}>{project.id} - {project.name}</option>)}
                     </select>
-                    <input type="number" min="0" max="100" value={progressForm.progress_percent} onChange={(event) => setProgressForm((prev) => ({ ...prev, progress_percent: event.target.value }))} placeholder="Porcentaje de avance" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Porcentaje de avance</label>
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => setProgressPercent(Number(progressForm.progress_percent || 0) - 5)} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-bold text-slate-600">-</button>
+                          <input type="number" min="0" max="100" value={progressForm.progress_percent} onChange={(event) => setProgressPercent(event.target.value)} className="h-10 w-20 rounded-full border border-slate-200 bg-white text-center text-lg font-bold text-[#1F6B3F] outline-none focus:border-[#1F6B3F]" aria-label="Porcentaje de avance" />
+                          <button type="button" onClick={() => setProgressPercent(Number(progressForm.progress_percent || 0) + 5)} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-bold text-slate-600">+</button>
+                        </div>
+                      </div>
+                      <input type="range" min="0" max="100" step="1" value={progressForm.progress_percent} onChange={(event) => setProgressPercent(event.target.value)} className="mt-4 w-full accent-[#1F6B3F]" aria-label="Mover porcentaje de avance" />
+                      <div className="mt-3 grid grid-cols-5 gap-2">
+                        {[0, 25, 50, 75, 100].map((value) => (
+                          <button key={value} type="button" onClick={() => setProgressPercent(value)} className={`rounded-full border px-2 py-2 text-[10px] font-bold uppercase tracking-widest ${Number(progressForm.progress_percent) === value ? 'border-[#1F6B3F] bg-[#1F6B3F] text-white' : 'border-slate-200 bg-white text-slate-500'}`}>
+                            {value}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <input value={progressForm.current_stage} onChange={(event) => setProgressForm((prev) => ({ ...prev, current_stage: event.target.value }))} placeholder="Etapa actual" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <input value={progressForm.next_step} onChange={(event) => setProgressForm((prev) => ({ ...prev, next_step: event.target.value }))} placeholder="Próximo paso" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <input value={progressForm.estimated_finish} onChange={(event) => setProgressForm((prev) => ({ ...prev, estimated_finish: event.target.value }))} placeholder="Entrega estimada" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
