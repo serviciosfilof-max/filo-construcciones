@@ -23,6 +23,15 @@ function normalizeOptionalUrl(value) {
   }
 }
 
+function normalizeStageMedia(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([key, url]) => [normalizeText(key), normalizeOptionalUrl(url)])
+      .filter(([key, url]) => key && url)
+  );
+}
+
 export default async function handler(req, res) {
   const supabaseUrl = getSupabaseUrl();
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -52,7 +61,7 @@ export default async function handler(req, res) {
 
     const { data: progress, error: progressError } = await supabase
       .from('project_progress')
-      .select('project_id, progress_percent, current_stage, next_step, estimated_finish, summary, media_url, updated_at')
+      .select('project_id, progress_percent, current_stage, next_step, estimated_finish, summary, media_url, stage_media, updated_at')
       .order('updated_at', { ascending: false });
 
     if (progressError) return send(res, 500, { error: progressError.message });
@@ -111,6 +120,7 @@ export default async function handler(req, res) {
     const estimated_finish = normalizeText(body.estimated_finish);
     const summary = normalizeText(body.summary);
     const media_url = normalizeOptionalUrl(body.media_url);
+    const stage_media = normalizeStageMedia(body.stage_media);
 
     if (!project_id) {
       return send(res, 400, { error: 'Falta elegir la obra.' });
@@ -127,11 +137,12 @@ export default async function handler(req, res) {
           estimated_finish,
           summary,
           media_url: media_url || null,
+          stage_media,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'project_id' }
       )
-      .select('project_id, progress_percent, current_stage, next_step, estimated_finish, summary, media_url, updated_at')
+      .select('project_id, progress_percent, current_stage, next_step, estimated_finish, summary, media_url, stage_media, updated_at')
       .single();
 
     if (error) return send(res, 500, { error: error.message });

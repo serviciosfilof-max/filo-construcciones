@@ -25,8 +25,12 @@ create table if not exists public.project_progress (
   estimated_finish text,
   summary text,
   media_url text,
+  stage_media jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
+
+alter table public.project_progress
+  add column if not exists stage_media jsonb not null default '{}'::jsonb;
 
 alter table public.client_access enable row level security;
 alter table public.project_progress enable row level security;

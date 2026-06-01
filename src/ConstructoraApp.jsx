@@ -71,7 +71,46 @@ const PROGRESS_FORM_DEFAULTS = {
   estimated_finish: '',
   summary: '',
   media_url: '',
+  stage_media: {},
 };
+
+const CLIENT_PROGRESS_STAGES = [
+  {
+    key: 'relevamiento',
+    label: 'Relevamiento',
+    from: 0,
+    limit: 10,
+    description: 'Inspeccionamos la fachada, detectamos zonas flojas, filtraciones, accesos y puntos seguros de trabajo.',
+  },
+  {
+    key: 'preparacion',
+    label: 'Preparación',
+    from: 10,
+    limit: 30,
+    description: 'Organizamos protecciones, materiales, anclajes, limpieza inicial y dejamos el frente listo para intervenir.',
+  },
+  {
+    key: 'ejecucion',
+    label: 'Ejecución',
+    from: 30,
+    limit: 70,
+    description: 'Realizamos la reparación principal: sellados, revoques, pintura, impermeabilización o tareas verticales según la obra.',
+  },
+  {
+    key: 'terminaciones',
+    label: 'Terminaciones',
+    from: 70,
+    limit: 90,
+    description: 'Corregimos detalles finos, repasos, limpieza de sectores y controlamos que el resultado quede prolijo.',
+  },
+  {
+    key: 'entrega',
+    label: 'Entrega',
+    from: 90,
+    limit: 100,
+    description: 'Hacemos la revisión final, retiro de elementos de obra y dejamos registro del trabajo terminado.',
+  },
+];
 
 const PROJECTS = [
   { id: 'ALT-001', name: 'Fachada vertical Norte', location: 'CABA, Buenos Aires', progress: 68, budget: '$4.8M', accessCode: 'FILO-ALT-001', status: 'Pintura y sellado' },
@@ -651,13 +690,9 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
 function ClientPortal({ user, progress, onLogout, onExitToPublic }) {
   const project = getProjectById(user.projectId);
   const percent = Math.max(0, Math.min(100, Number(progress?.progressPercent ?? project.progress ?? 0)));
-  const stages = [
-    { label: 'Relevamiento', from: 0, limit: 10 },
-    { label: 'Preparación', from: 10, limit: 30 },
-    { label: 'Ejecución', from: 30, limit: 70 },
-    { label: 'Terminaciones', from: 70, limit: 90 },
-    { label: 'Entrega', from: 90, limit: 100 },
-  ];
+  const stageMedia = progress?.stageMedia || {};
+  const activeStage = CLIENT_PROGRESS_STAGES.find((stage) => percent > stage.from && percent < stage.limit) || CLIENT_PROGRESS_STAGES.find((stage) => percent >= stage.limit) || CLIENT_PROGRESS_STAGES[0];
+  const activeMediaUrl = stageMedia[activeStage?.key] || progress?.mediaUrl || '';
 
   return (
     <div className="min-h-screen bg-[#f6f8f6] text-slate-900">
@@ -712,19 +747,34 @@ function ClientPortal({ user, progress, onLogout, onExitToPublic }) {
         <Panel className="lg:col-span-7">
           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Etapas</p>
           <div className="mt-5 space-y-3">
-            {stages.map((stage) => {
+            {CLIENT_PROGRESS_STAGES.map((stage) => {
               const done = percent >= stage.limit;
               const active = !done && percent > stage.from;
               const label = done ? `${stage.limit}%` : active ? `En curso: ${percent}%` : `Hasta ${stage.limit}%`;
+              const mediaUrl = stageMedia[stage.key] || '';
               return (
-                <div key={stage.label} className={`flex items-center justify-between rounded-2xl border p-4 ${active ? 'border-[#1F6B3F]/40 bg-emerald-50/60' : 'border-slate-200'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-full ${done ? 'bg-[#1F6B3F] text-white' : active ? 'bg-[#1F6B3F]/10 text-[#1F6B3F]' : 'bg-slate-100 text-slate-400'}`}>
-                      <CheckSquare size={16} />
+                <div key={stage.label} className={`rounded-2xl border p-4 ${active ? 'border-[#1F6B3F]/40 bg-emerald-50/60' : 'border-slate-200'}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex gap-3">
+                      <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${done ? 'bg-[#1F6B3F] text-white' : active ? 'bg-[#1F6B3F]/10 text-[#1F6B3F]' : 'bg-slate-100 text-slate-400'}`}>
+                        <CheckSquare size={16} />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-900">{stage.label}</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-500">{stage.description}</p>
+                      </div>
                     </div>
-                    <p className="font-semibold text-slate-900">{stage.label}</p>
+                    <span className={`shrink-0 text-xs font-bold uppercase tracking-widest ${active ? 'text-[#1F6B3F]' : 'text-slate-400'}`}>{label}</span>
                   </div>
-                  <span className={`text-xs font-bold uppercase tracking-widest ${active ? 'text-[#1F6B3F]' : 'text-slate-400'}`}>{label}</span>
+                  {mediaUrl && (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                      {isPlayableVideoUrl(mediaUrl) ? (
+                        <video src={mediaUrl} className="h-44 w-full object-cover" controls playsInline />
+                      ) : (
+                        <img src={mediaUrl} alt={`Avance ${stage.label}`} className="h-44 w-full object-cover" />
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -734,11 +784,11 @@ function ClientPortal({ user, progress, onLogout, onExitToPublic }) {
         <Panel className="lg:col-span-5">
           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Material de avance</p>
           <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-            {progress?.mediaUrl ? (
-              isPlayableVideoUrl(progress.mediaUrl) ? (
-                <video src={progress.mediaUrl} className="h-72 w-full object-cover" controls playsInline />
+            {activeMediaUrl ? (
+              isPlayableVideoUrl(activeMediaUrl) ? (
+                <video src={activeMediaUrl} className="h-72 w-full object-cover" controls playsInline />
               ) : (
-                <img src={progress.mediaUrl} alt="Avance de obra" className="h-72 w-full object-cover" />
+                <img src={activeMediaUrl} alt="Avance de obra" className="h-72 w-full object-cover" />
               )
             ) : (
               <div className="flex h-72 items-center justify-center text-sm text-slate-400">Sin fotos o videos cargados.</div>
@@ -966,6 +1016,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
       estimated_finish: savedProgress.estimated_finish || '',
       summary: savedProgress.summary || '',
       media_url: savedProgress.media_url || '',
+      stage_media: savedProgress.stage_media || {},
     }));
   }, [activeTab, clientPortalProgress, progressForm.project_id]);
 
@@ -1020,6 +1071,42 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     } finally {
       setImageUploadingKey('');
     }
+  };
+
+  const handleUploadClientStageMedia = async (stageKey, file) => {
+    if (!currentUser || currentUser.role !== 'admin') {
+      setClientPortalError('Solo un administrador puede subir archivos.');
+      return;
+    }
+
+    setClientPortalMessage('');
+    setClientPortalError('');
+    setImageUploadingKey(`client-stage-${stageKey}`);
+    try {
+      const url = await uploadSiteImage(file, currentUser.id, currentAdminPassword);
+      setProgressForm((prev) => ({
+        ...prev,
+        stage_media: {
+          ...(prev.stage_media || {}),
+          [stageKey]: url,
+        },
+      }));
+      setClientPortalMessage('Foto o video de etapa cargado. Guardá el avance para publicarlo al cliente.');
+    } catch (error) {
+      setClientPortalError(error.message || 'No se pudo subir el archivo.');
+    } finally {
+      setImageUploadingKey('');
+    }
+  };
+
+  const setClientStageMedia = (stageKey, value) => {
+    setProgressForm((prev) => ({
+      ...prev,
+      stage_media: {
+        ...(prev.stage_media || {}),
+        [stageKey]: value,
+      },
+    }));
   };
 
   const setProgressPercent = (value) => {
@@ -1646,6 +1733,32 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                       uploadLabel="Subir foto/video"
                       onUpload={handleUploadClientProgressMedia}
                     />
+                    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Fotos por etapa</p>
+                        <p className="mt-2 text-xs leading-5 text-slate-500">Cada archivo aparece al lado de la etapa correspondiente en el portal del cliente.</p>
+                      </div>
+                      {CLIENT_PROGRESS_STAGES.map((stage) => (
+                        <div key={stage.key} className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <p className="font-bold text-slate-900">{stage.label}</p>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">{stage.description}</p>
+                          <div className="mt-4">
+                            <ImageFieldEditor
+                              label={`Material de ${stage.label}`}
+                              value={(progressForm.stage_media || {})[stage.key] || ''}
+                              onChange={(event) => setClientStageMedia(stage.key, event.target.value)}
+                              onClear={() => setClientStageMedia(stage.key, '')}
+                              uploading={imageUploadingKey === `client-stage-${stage.key}`}
+                              helpText="Subí la foto o video que corresponde a esta etapa."
+                              accept="image/*,video/*"
+                              mediaType={isPlayableVideoUrl((progressForm.stage_media || {})[stage.key]) ? 'video' : 'image'}
+                              uploadLabel="Subir material"
+                              onUpload={(file) => handleUploadClientStageMedia(stage.key, file)}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                     <textarea rows="4" value={progressForm.summary} onChange={(event) => setProgressForm((prev) => ({ ...prev, summary: event.target.value }))} placeholder="Resumen para el cliente" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <button disabled={clientPortalLoading} type="submit" className="w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-60">
                       Guardar avance
