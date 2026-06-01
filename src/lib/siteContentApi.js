@@ -7,6 +7,7 @@ const ADMIN_LOGIN_ENDPOINT = '/api/admin-login';
 const STAFF_LOGIN_ENDPOINT = '/api/staff-login';
 const CLIENT_LOGIN_ENDPOINT = '/api/client-login';
 const CLIENT_PORTAL_ENDPOINT = '/api/client-portal';
+const OPERATIONS_ENDPOINT = '/api/operations';
 
 async function readJsonResponse(response) {
   const payload = await response.json().catch(() => ({}));
@@ -78,6 +79,41 @@ export async function fetchClientPortalAdmin(adminPassword) {
 export async function saveClientPortalAdmin(payload, adminPassword) {
   const response = await fetch(CLIENT_PORTAL_ENDPOINT, {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      ...payload,
+      admin_code: adminPassword,
+    }),
+  });
+
+  return readJsonResponse(response);
+}
+
+export async function fetchOperations() {
+  const response = await fetch(OPERATIONS_ENDPOINT);
+  return readJsonResponse(response);
+}
+
+export async function saveOperation(payload, adminPassword) {
+  const response = await fetch(OPERATIONS_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      ...payload,
+      admin_code: adminPassword,
+    }),
+  });
+
+  return readJsonResponse(response);
+}
+
+export async function deleteOperation(payload, adminPassword) {
+  const response = await fetch(OPERATIONS_ENDPOINT, {
+    method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
     },

@@ -17,13 +17,14 @@ import {
   PackageCheck,
   QrCode,
   Search,
+  Trash2,
   Upload,
   User,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import ProjectQrScanner from './components/ProjectQrScanner';
 import { hasSupabaseEnv, supabase } from './lib/supabaseClient';
-import { fetchClientPortalAdmin, loginAdmin, loginClient, loginStaff, saveClientPortalAdmin, saveSiteContent, uploadSiteImage } from './lib/siteContentApi';
+import { deleteOperation, fetchClientPortalAdmin, fetchOperations, loginAdmin, loginClient, loginStaff, saveClientPortalAdmin, saveOperation, saveSiteContent, uploadSiteImage } from './lib/siteContentApi';
 import { defaultSiteContent } from './siteContent';
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0995/6432/3185/files/FILO.png?v=1775935955';
@@ -118,6 +119,53 @@ const PROJECTS = [
   { id: 'IMP-003', name: 'Terraza con filtraciones', location: 'San Isidro, Buenos Aires', progress: 20, budget: '$2.9M', accessCode: 'FILO-IMP-003', status: 'Armado de insumos' },
   { id: 'CAR-004', name: 'Carteleria exterior', location: 'Palermo, Buenos Aires', progress: 12, budget: '$1.2M', accessCode: 'FILO-CAR-004', status: 'Relevamiento' },
 ];
+
+const PROJECT_FORM_DEFAULTS = {
+  id: '',
+  name: '',
+  location: '',
+  progress: 0,
+  budget: '',
+  status: '',
+  state: 'activa',
+};
+
+const SUPPLY_FORM_DEFAULTS = {
+  name: '',
+  stock: '',
+  unit: '',
+  status: 'OK',
+  assigned_role: 'todos',
+  notes: '',
+};
+
+const BUDGET_FORM_DEFAULTS = {
+  category: 'Insumos',
+  detail: '',
+  amount: '',
+  kind: 'presupuesto',
+};
+
+function mapProjectRow(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    location: row.location || '',
+    progress: Number(row.progress || 0),
+    budget: row.budget || '',
+    accessCode: row.access_code || row.accessCode || `FILO-${row.id}`,
+    status: row.status || '',
+    state: row.state || 'activa',
+  };
+}
+
+function formatMoney(value) {
+  return Number(value || 0).toLocaleString('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    maximumFractionDigits: 0,
+  });
+}
 
 const FALLBACK_USERS = [
   { id: 'ADM-001', name: 'Administrador Filo', role: 'admin', shift: '07:00-17:00', email: 'admin@filo.local', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', qrCode: null },
@@ -815,7 +863,16 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [editEmployeeForm, setEditEmployeeForm] = useState(EMPLOYEE_FORM_DEFAULTS);
   const [editEmployeeLoading, setEditEmployeeLoading] = useState(false);
+  const [projects, setProjects] = useState(PROJECTS);
   const [selectedProject, setSelectedProject] = useState(PROJECTS[0]);
+  const [supplies, setSupplies] = useState(SUPPLIES.map((item) => ({ ...item, project_id: PROJECTS[0].id, assigned_role: 'todos', notes: '' })));
+  const [budgetItems, setBudgetItems] = useState([]);
+  const [operationsError, setOperationsError] = useState('');
+  const [operationsMessage, setOperationsMessage] = useState('');
+  const [operationsLoading, setOperationsLoading] = useState(false);
+  const [projectForm, setProjectForm] = useState(PROJECT_FORM_DEFAULTS);
+  const [supplyForm, setSupplyForm] = useState(SUPPLY_FORM_DEFAULTS);
+  const [budgetForm, setBudgetForm] = useState(BUDGET_FORM_DEFAULTS);
   const [activeTab, setActiveTab] = useState('inicio');
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
@@ -838,6 +895,30 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     if (!onSiteContentChange) return;
     onSiteContentChange((prev) => updater(prev || defaultSiteContent));
   };
+
+  async function loadOperations() {
+    setOperationsLoading(true);
+    setOperationsError('');
+    try {
+      const payload = await fetchOperations();
+      const loadedProjects = (payload.projects || []).map(mapProjectRow);
+      if (loadedProjects.length) {
+        setProjects(loadedProjects);
+        setSelectedProject((prev) => loadedProjects.find((project) => project.id === prev?.id) || loadedProjects[0]);
+      }
+      if (payload.supplies) setSupplies(payload.supplies);
+      if (payload.budgets) setBudgetItems(payload.budgets);
+    } catch (error) {
+      setOperationsError(error.message || 'No se pudo cargar la gestión operativa.');
+    } finally {
+      setOperationsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!currentUser) return;
+    loadOperations();
+  }, [currentUser?.id]);
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'admin') return;
@@ -1114,6 +1195,104 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     setProgressForm((prev) => ({ ...prev, progress_percent: String(percent) }));
   };
 
+  const saveProject = async (payload) => {
+    setOperationsMessage('');
+    setOperationsError('');
+    setOperationsLoading(true);
+    try {
+      await saveOperation({ type: 'project', ...payload }, currentAdminPassword);
+      setOperationsMessage('Obra actualizada.');
+      setProjectForm(PROJECT_FORM_DEFAULTS);
+      await loadOperations();
+    } catch (error) {
+      setOperationsError(error.message || 'No se pudo guardar la obra.');
+    } finally {
+      setOperationsLoading(false);
+    }
+  };
+
+  const handleCreateProject = async (event) => {
+    event.preventDefault();
+    await saveProject(projectForm);
+  };
+
+  const handleUpdateProjectState = async (project, state) => {
+    await saveProject({ ...project, access_code: project.accessCode, state });
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    setOperationsMessage('');
+    setOperationsError('');
+    setOperationsLoading(true);
+    try {
+      await deleteOperation({ type: 'project', id: projectId }, currentAdminPassword);
+      setOperationsMessage('Obra eliminada.');
+      await loadOperations();
+    } catch (error) {
+      setOperationsError(error.message || 'No se pudo eliminar la obra.');
+    } finally {
+      setOperationsLoading(false);
+    }
+  };
+
+  const handleCreateSupply = async (event) => {
+    event.preventDefault();
+    setOperationsMessage('');
+    setOperationsError('');
+    setOperationsLoading(true);
+    try {
+      await saveOperation({ type: 'supply', project_id: selectedProject.id, ...supplyForm }, currentAdminPassword);
+      setOperationsMessage('Insumo guardado.');
+      setSupplyForm(SUPPLY_FORM_DEFAULTS);
+      await loadOperations();
+    } catch (error) {
+      setOperationsError(error.message || 'No se pudo guardar el insumo.');
+    } finally {
+      setOperationsLoading(false);
+    }
+  };
+
+  const handleDeleteSupply = async (id) => {
+    setOperationsLoading(true);
+    try {
+      await deleteOperation({ type: 'supply', id }, currentAdminPassword);
+      await loadOperations();
+    } catch (error) {
+      setOperationsError(error.message || 'No se pudo eliminar el insumo.');
+    } finally {
+      setOperationsLoading(false);
+    }
+  };
+
+  const handleCreateBudgetItem = async (event) => {
+    event.preventDefault();
+    setOperationsMessage('');
+    setOperationsError('');
+    setOperationsLoading(true);
+    try {
+      await saveOperation({ type: 'budget', project_id: selectedProject.id, ...budgetForm }, currentAdminPassword);
+      setOperationsMessage('Movimiento de presupuesto guardado.');
+      setBudgetForm(BUDGET_FORM_DEFAULTS);
+      await loadOperations();
+    } catch (error) {
+      setOperationsError(error.message || 'No se pudo guardar el presupuesto.');
+    } finally {
+      setOperationsLoading(false);
+    }
+  };
+
+  const handleDeleteBudgetItem = async (id) => {
+    setOperationsLoading(true);
+    try {
+      await deleteOperation({ type: 'budget', id }, currentAdminPassword);
+      await loadOperations();
+    } catch (error) {
+      setOperationsError(error.message || 'No se pudo eliminar el movimiento.');
+    } finally {
+      setOperationsLoading(false);
+    }
+  };
+
   const handleLogin = (user, adminPassword = '', progress = null) => {
     setCurrentUser(user);
     setCurrentAdminPassword(adminPassword);
@@ -1327,7 +1506,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     setCurrentUser(null);
     setCurrentAdminPassword('');
     setClientProgress(null);
-    setSelectedProject(PROJECTS[0]);
+    setSelectedProject(projects[0] || PROJECTS[0]);
     setActiveTab('inicio');
     setScannerOpen(false);
     setAttendanceRecords([]);
@@ -1365,13 +1544,22 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   }, {});
   const roleDashboard = ROLE_DASHBOARDS[currentUser.role] || ROLE_DASHBOARDS.operario;
   const roleTasks = TASKS.filter((task) => roleDashboard.tasks.includes(task.id));
-  const roleSupplies = currentUser.role === 'operario' ? SUPPLIES.slice(0, 4) : SUPPLIES;
+  const activeProjects = projects.filter((project) => project.state !== 'suspendida');
+  const selectedProjectSupplies = supplies.filter((item) => item.project_id === selectedProject.id);
+  const roleSupplies = selectedProjectSupplies.filter((item) => item.assigned_role === 'todos' || item.assigned_role === currentUser.role || currentUser.role === 'admin');
+  const selectedBudgetItems = budgetItems.filter((item) => item.project_id === selectedProject.id);
+  const budgetPlanned = selectedBudgetItems.filter((item) => item.kind === 'presupuesto').reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const budgetSpent = selectedBudgetItems.filter((item) => item.kind === 'costo').reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const budgetByCategory = selectedBudgetItems.reduce((acc, item) => {
+    acc[item.category] = (acc[item.category] || 0) + Number(item.amount || 0);
+    return acc;
+  }, {});
   const canRegisterAttendance = currentUser.role !== 'admin';
   const userNameById = users.reduce((acc, user) => {
     acc[user.id] = user.name;
     return acc;
   }, {});
-  const projectNameById = PROJECTS.reduce((acc, project) => {
+  const projectNameById = projects.reduce((acc, project) => {
     acc[project.id] = project.name;
     return acc;
   }, {});
@@ -1551,22 +1739,44 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
             <section className="space-y-6">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Trabajos activos</p>
-                  <h2 className="text-3xl font-bold tracking-tight text-slate-900">Seleccionar servicio en curso</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Gestión de obras</p>
+                  <h2 className="text-3xl font-bold tracking-tight text-slate-900">Alta, pausa y suspensión de trabajos</h2>
                 </div>
-                <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-400">
-                  <Search size={16} />
-                  <span>Buscar trabajo...</span>
-                  <Filter size={16} />
-                </div>
+                <button onClick={loadOperations} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-bold uppercase tracking-widest text-slate-500">Actualizar</button>
               </div>
 
+              {operationsMessage && <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{operationsMessage}</p>}
+              {operationsError && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{operationsError}</p>}
+
+              {currentUser.role === 'admin' && (
+                <Panel>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#1F6B3F]">Nueva obra</p>
+                  <form onSubmit={handleCreateProject} className="mt-5 grid gap-4 md:grid-cols-3">
+                    <input required value={projectForm.id} onChange={(event) => setProjectForm((prev) => ({ ...prev, id: event.target.value.toUpperCase() }))} placeholder="ALT-005" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input required value={projectForm.name} onChange={(event) => setProjectForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Nombre de la obra" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input value={projectForm.location} onChange={(event) => setProjectForm((prev) => ({ ...prev, location: event.target.value }))} placeholder="Ubicación" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input type="number" min="0" max="100" value={projectForm.progress} onChange={(event) => setProjectForm((prev) => ({ ...prev, progress: event.target.value }))} placeholder="Avance %" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input value={projectForm.budget} onChange={(event) => setProjectForm((prev) => ({ ...prev, budget: event.target.value }))} placeholder="Presupuesto estimado" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input value={projectForm.status} onChange={(event) => setProjectForm((prev) => ({ ...prev, status: event.target.value }))} placeholder="Estado visible" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <select value={projectForm.state} onChange={(event) => setProjectForm((prev) => ({ ...prev, state: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
+                      <option value="activa">Activa</option>
+                      <option value="pausada">Pausada</option>
+                      <option value="suspendida">Suspendida</option>
+                    </select>
+                    <button disabled={operationsLoading} type="submit" className="md:col-span-2 rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-60">
+                      Agregar obra
+                    </button>
+                  </form>
+                </Panel>
+              )}
+
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {PROJECTS.map((project) => (
+                {projects.map((project) => (
                   <Panel key={project.id} onClick={() => setSelectedProject(project)} className={project.id === selectedProject.id ? 'border-[#1F6B3F] ring-1 ring-[#1F6B3F]' : ''}>
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <Badge tone={project.id === selectedProject.id ? 'green' : 'neutral'}>{project.id}</Badge>
+                        <Badge tone={project.state === 'activa' ? 'green' : project.state === 'pausada' ? 'amber' : 'red'}>{project.state || 'activa'}</Badge>
                         <h3 className="mt-4 text-2xl font-bold text-slate-900">{project.name}</h3>
                         <p className="mt-1 text-sm text-slate-500">{project.location}</p>
                       </div>
@@ -1584,6 +1794,14 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                         <div className="h-full rounded-full bg-[#1F6B3F]" style={{ width: `${project.progress}%` }} />
                       </div>
                     </div>
+                    {currentUser.role === 'admin' && (
+                      <div className="mt-5 grid grid-cols-2 gap-2">
+                        <button type="button" onClick={(event) => { event.stopPropagation(); handleUpdateProjectState(project, 'activa'); }} className="rounded-full border border-emerald-200 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-700">Activar</button>
+                        <button type="button" onClick={(event) => { event.stopPropagation(); handleUpdateProjectState(project, 'pausada'); }} className="rounded-full border border-amber-200 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-amber-700">Pausar</button>
+                        <button type="button" onClick={(event) => { event.stopPropagation(); handleUpdateProjectState(project, 'suspendida'); }} className="rounded-full border border-orange-200 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-orange-700">Suspender</button>
+                        <button type="button" onClick={(event) => { event.stopPropagation(); handleDeleteProject(project.id); }} className="rounded-full border border-red-200 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-red-700">Eliminar</button>
+                      </div>
+                    )}
                   </Panel>
                 ))}
               </div>
@@ -1684,7 +1902,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                     <input required type="email" value={clientForm.email} onChange={(event) => setClientForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="cliente@email.com" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <input value={clientForm.phone} onChange={(event) => setClientForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder="WhatsApp" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <select value={clientForm.project_id} onChange={(event) => setClientForm((prev) => ({ ...prev, project_id: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
-                      {PROJECTS.map((project) => <option key={project.id} value={project.id}>{project.id} - {project.name}</option>)}
+                      {activeProjects.map((project) => <option key={project.id} value={project.id}>{project.id} - {project.name}</option>)}
                     </select>
                     <input type="password" value={clientForm.password} onChange={(event) => setClientForm((prev) => ({ ...prev, password: event.target.value }))} placeholder="Clave de cliente" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <button disabled={clientPortalLoading} type="submit" className="md:col-span-2 rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-60">
@@ -1698,7 +1916,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                   <h3 className="mt-2 text-2xl font-bold text-slate-900">Actualizar portal</h3>
                   <form onSubmit={handleSaveProjectProgress} className="mt-5 space-y-4">
                     <select value={progressForm.project_id} onChange={(event) => setProgressForm((prev) => ({ ...prev, project_id: event.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
-                      {PROJECTS.map((project) => <option key={project.id} value={project.id}>{project.id} - {project.name}</option>)}
+                      {activeProjects.map((project) => <option key={project.id} value={project.id}>{project.id} - {project.name}</option>)}
                     </select>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-center justify-between gap-4">
@@ -2091,28 +2309,66 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
 
           {activeTab === 'finanzas' && (
             <section className="grid gap-6 lg:grid-cols-12">
+              {operationsMessage && <p className="lg:col-span-12 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{operationsMessage}</p>}
+              {operationsError && <p className="lg:col-span-12 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{operationsError}</p>}
               <Panel className="lg:col-span-8">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Costos</p>
-                <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">Costeo de {selectedProject.name}</h2>
-                <div className="mt-6 flex items-end gap-3">
-                  <p className="text-5xl font-bold tracking-tight text-slate-900">{selectedProject.budget}</p>
-                  <Badge tone="green">+4%</Badge>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Presupuesto real</p>
+                    <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">Costeo de {selectedProject.name}</h2>
+                  </div>
+                  <Badge tone="green">{selectedBudgetItems.length} movimientos</Badge>
                 </div>
-                <p className="mt-4 max-w-xl text-sm text-slate-500">Seguimiento simple para insumos, mano de obra, seguridad y traslados en trabajos verticales.</p>
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  <StatCard label="Presupuestado" value={formatMoney(budgetPlanned)} detail={selectedProject.budget || 'Sin estimado'} />
+                  <StatCard label="Gastado" value={formatMoney(budgetSpent)} detail="Costos cargados" />
+                  <StatCard label="Saldo" value={formatMoney(budgetPlanned - budgetSpent)} detail="Presupuesto - costos" />
+                </div>
+                {currentUser.role === 'admin' && (
+                  <form onSubmit={handleCreateBudgetItem} className="mt-6 grid gap-3 md:grid-cols-5">
+                    <select value={budgetForm.kind} onChange={(event) => setBudgetForm((prev) => ({ ...prev, kind: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
+                      <option value="presupuesto">Presupuesto</option>
+                      <option value="costo">Costo real</option>
+                    </select>
+                    <select value={budgetForm.category} onChange={(event) => setBudgetForm((prev) => ({ ...prev, category: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
+                      {['Insumos', 'Mano de obra', 'Seguridad', 'Traslados', 'Otros'].map((category) => <option key={category} value={category}>{category}</option>)}
+                    </select>
+                    <input required value={budgetForm.detail} onChange={(event) => setBudgetForm((prev) => ({ ...prev, detail: event.target.value }))} placeholder="Detalle" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input required type="number" min="0" value={budgetForm.amount} onChange={(event) => setBudgetForm((prev) => ({ ...prev, amount: event.target.value }))} placeholder="Monto" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <button disabled={operationsLoading} type="submit" className="rounded-full bg-[#1F6B3F] px-4 py-3 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-60">Cargar</button>
+                  </form>
+                )}
               </Panel>
 
               <Panel className="lg:col-span-4 bg-[#fbfcfb]">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Distribución</p>
                 <div className="mt-4 space-y-4">
-                  {['Insumos', 'Mano de obra', 'Seguridad', 'Traslados'].map((item, index) => (
+                  {Object.entries(budgetByCategory).length ? Object.entries(budgetByCategory).map(([item, amount]) => (
                     <div key={item}>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-slate-600">{item}</span>
-                        <span className="font-semibold text-slate-900">{45 - index * 10}%</span>
+                        <span className="font-semibold text-slate-900">{formatMoney(amount)}</span>
                       </div>
                       <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-[#1F6B3F]" style={{ width: `${45 - index * 10}%` }} />
+                        <div className="h-full rounded-full bg-[#1F6B3F]" style={{ width: `${Math.min(100, (amount / Math.max(1, budgetPlanned + budgetSpent)) * 100)}%` }} />
                       </div>
+                    </div>
+                  )) : <p className="text-sm text-slate-500">Todavía no hay presupuesto cargado.</p>}
+                </div>
+              </Panel>
+
+              <Panel className="lg:col-span-12">
+                <h3 className="text-2xl font-bold text-slate-900">Movimientos</h3>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {selectedBudgetItems.map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-slate-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <Badge tone={item.kind === 'presupuesto' ? 'green' : 'amber'}>{item.kind}</Badge>
+                        {currentUser.role === 'admin' && <button onClick={() => handleDeleteBudgetItem(item.id)} className="text-red-500"><Trash2 size={16} /></button>}
+                      </div>
+                      <p className="mt-3 font-semibold text-slate-900">{item.detail}</p>
+                      <p className="mt-1 text-xs uppercase tracking-widest text-slate-400">{item.category}</p>
+                      <p className="mt-3 text-xl font-bold text-slate-900">{formatMoney(item.amount)}</p>
                     </div>
                   ))}
                 </div>
@@ -2122,33 +2378,60 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
 
           {activeTab === 'insumos' && (
             <section className="space-y-6">
+              {operationsMessage && <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{operationsMessage}</p>}
+              {operationsError && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{operationsError}</p>}
               <Panel>
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Insumos operativos</p>
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Lo que el admin tiene que tener a mano</h2>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Insumos por obra</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Materiales de {selectedProject.name}</h2>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                      Control rápido de seguridad, materiales y herramientas para pintura vertical, limpieza de vidrios, impermeabilización y cartelería.
+                      Cada insumo queda asignado a la obra y visible para el rol que corresponda.
                     </p>
                   </div>
                   <Badge tone="green">{roleSupplies.length} items</Badge>
                 </div>
 
+                {currentUser.role === 'admin' && (
+                  <form onSubmit={handleCreateSupply} className="mt-6 grid gap-3 md:grid-cols-6">
+                    <input required value={supplyForm.name} onChange={(event) => setSupplyForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Insumo" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input required type="number" min="0" value={supplyForm.stock} onChange={(event) => setSupplyForm((prev) => ({ ...prev, stock: event.target.value }))} placeholder="Stock" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input value={supplyForm.unit} onChange={(event) => setSupplyForm((prev) => ({ ...prev, unit: event.target.value }))} placeholder="Unidad" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <select value={supplyForm.status} onChange={(event) => setSupplyForm((prev) => ({ ...prev, status: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
+                      <option value="OK">OK</option>
+                      <option value="Revisar">Revisar</option>
+                      <option value="Comprar">Comprar</option>
+                    </select>
+                    <select value={supplyForm.assigned_role} onChange={(event) => setSupplyForm((prev) => ({ ...prev, assigned_role: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
+                      <option value="todos">Todos</option>
+                      {EMPLOYEE_ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+                    </select>
+                    <button disabled={operationsLoading} type="submit" className="rounded-full bg-[#1F6B3F] px-4 py-3 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-60">Cargar</button>
+                    <input value={supplyForm.notes} onChange={(event) => setSupplyForm((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Nota interna" className="md:col-span-6 rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                  </form>
+                )}
+
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {roleSupplies.map((item) => (
-                    <div key={item.name} className="rounded-2xl border border-slate-200 bg-[#fbfcfb] p-4">
+                    <div key={item.id || item.name} className="rounded-2xl border border-slate-200 bg-[#fbfcfb] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="rounded-full bg-white p-2 text-[#1F6B3F] shadow-sm">
                           <PackageCheck size={18} />
                         </div>
-                        <Badge tone={item.status === 'OK' ? 'green' : item.status === 'Comprar' ? 'red' : 'amber'}>{item.status}</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge tone={item.status === 'OK' ? 'green' : item.status === 'Comprar' ? 'red' : 'amber'}>{item.status}</Badge>
+                          {currentUser.role === 'admin' && item.id && <button onClick={() => handleDeleteSupply(item.id)} className="text-red-500"><Trash2 size={16} /></button>}
+                        </div>
                       </div>
                       <p className="mt-4 text-lg font-semibold text-slate-900">{item.name}</p>
                       <p className="mt-2 text-sm text-slate-500">
                         Stock: <span className="font-semibold text-slate-900">{item.stock}</span> {item.unit}
                       </p>
+                      <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Visible: {item.assigned_role === 'todos' ? 'Todos' : ROLE_LABELS[item.assigned_role] || item.assigned_role}</p>
+                      {item.notes && <p className="mt-2 text-xs text-slate-500">{item.notes}</p>}
                     </div>
                   ))}
+                  {!roleSupplies.length && <p className="text-sm text-slate-500">No hay insumos visibles para tu rol en esta obra.</p>}
                 </div>
               </Panel>
 
