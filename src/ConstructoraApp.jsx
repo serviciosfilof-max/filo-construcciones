@@ -652,11 +652,11 @@ function ClientPortal({ user, progress, onLogout, onExitToPublic }) {
   const project = getProjectById(user.projectId);
   const percent = Math.max(0, Math.min(100, Number(progress?.progressPercent ?? project.progress ?? 0)));
   const stages = [
-    { label: 'Relevamiento', limit: 10 },
-    { label: 'Preparación', limit: 30 },
-    { label: 'Ejecución', limit: 70 },
-    { label: 'Terminaciones', limit: 90 },
-    { label: 'Entrega', limit: 100 },
+    { label: 'Relevamiento', from: 0, limit: 10 },
+    { label: 'Preparación', from: 10, limit: 30 },
+    { label: 'Ejecución', from: 30, limit: 70 },
+    { label: 'Terminaciones', from: 70, limit: 90 },
+    { label: 'Entrega', from: 90, limit: 100 },
   ];
 
   return (
@@ -714,15 +714,17 @@ function ClientPortal({ user, progress, onLogout, onExitToPublic }) {
           <div className="mt-5 space-y-3">
             {stages.map((stage) => {
               const done = percent >= stage.limit;
+              const active = !done && percent > stage.from;
+              const label = done ? `${stage.limit}%` : active ? `En curso: ${percent}%` : `Hasta ${stage.limit}%`;
               return (
-                <div key={stage.label} className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                <div key={stage.label} className={`flex items-center justify-between rounded-2xl border p-4 ${active ? 'border-[#1F6B3F]/40 bg-emerald-50/60' : 'border-slate-200'}`}>
                   <div className="flex items-center gap-3">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-full ${done ? 'bg-[#1F6B3F] text-white' : 'bg-slate-100 text-slate-400'}`}>
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full ${done ? 'bg-[#1F6B3F] text-white' : active ? 'bg-[#1F6B3F]/10 text-[#1F6B3F]' : 'bg-slate-100 text-slate-400'}`}>
                       <CheckSquare size={16} />
                     </div>
                     <p className="font-semibold text-slate-900">{stage.label}</p>
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">{stage.limit}%</span>
+                  <span className={`text-xs font-bold uppercase tracking-widest ${active ? 'text-[#1F6B3F]' : 'text-slate-400'}`}>{label}</span>
                 </div>
               );
             })}
@@ -982,6 +984,26 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
       setClientPortalError(error.message || 'No se pudo guardar el avance.');
     } finally {
       setClientPortalLoading(false);
+    }
+  };
+
+  const handleUploadClientProgressMedia = async (file) => {
+    if (!currentUser || currentUser.role !== 'admin') {
+      setClientPortalError('Solo un administrador puede subir archivos.');
+      return;
+    }
+
+    setClientPortalMessage('');
+    setClientPortalError('');
+    setImageUploadingKey('client-progress-media');
+    try {
+      const url = await uploadSiteImage(file, currentUser.id, currentAdminPassword);
+      setProgressForm((prev) => ({ ...prev, media_url: url }));
+      setClientPortalMessage('Foto o video cargado. Guardá el avance para publicarlo al cliente.');
+    } catch (error) {
+      setClientPortalError(error.message || 'No se pudo subir el archivo.');
+    } finally {
+      setImageUploadingKey('');
     }
   };
 
@@ -1575,7 +1597,18 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                     <input value={progressForm.current_stage} onChange={(event) => setProgressForm((prev) => ({ ...prev, current_stage: event.target.value }))} placeholder="Etapa actual" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <input value={progressForm.next_step} onChange={(event) => setProgressForm((prev) => ({ ...prev, next_step: event.target.value }))} placeholder="Próximo paso" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <input value={progressForm.estimated_finish} onChange={(event) => setProgressForm((prev) => ({ ...prev, estimated_finish: event.target.value }))} placeholder="Entrega estimada" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
-                    <input value={progressForm.media_url} onChange={(event) => setProgressForm((prev) => ({ ...prev, media_url: event.target.value }))} placeholder="URL de foto o video" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <ImageFieldEditor
+                      label="Foto o video del avance"
+                      value={progressForm.media_url}
+                      onChange={(event) => setProgressForm((prev) => ({ ...prev, media_url: event.target.value }))}
+                      onClear={() => setProgressForm((prev) => ({ ...prev, media_url: '' }))}
+                      uploading={imageUploadingKey === 'client-progress-media'}
+                      helpText="Subí una foto o video desde el dashboard. Después tocá Guardar avance."
+                      accept="image/*,video/*"
+                      mediaType={isPlayableVideoUrl(progressForm.media_url) ? 'video' : 'image'}
+                      uploadLabel="Subir foto/video"
+                      onUpload={handleUploadClientProgressMedia}
+                    />
                     <textarea rows="4" value={progressForm.summary} onChange={(event) => setProgressForm((prev) => ({ ...prev, summary: event.target.value }))} placeholder="Resumen para el cliente" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <button disabled={clientPortalLoading} type="submit" className="w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-60">
                       Guardar avance
