@@ -16,6 +16,9 @@ function mapProgress(row) {
     summary: row.summary || '',
     mediaUrl: row.media_url || '',
     stageMedia: row.stage_media || {},
+    warranty: row.warranty || '',
+    contractUrl: row.contract_url || '',
+    documentationUrl: row.documentation_url || '',
     updatedAt: row.updated_at,
   };
 }
@@ -63,7 +66,7 @@ export default async function handler(req, res) {
 
   const { data: progress, error: progressError } = await supabase
     .from('project_progress')
-    .select('project_id, progress_percent, current_stage, next_step, estimated_finish, summary, media_url, stage_media, updated_at')
+    .select('project_id, progress_percent, current_stage, next_step, estimated_finish, summary, media_url, stage_media, warranty, contract_url, documentation_url, updated_at')
     .eq('project_id', projectId)
     .maybeSingle();
 

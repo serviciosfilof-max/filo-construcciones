@@ -73,6 +73,9 @@ const PROGRESS_FORM_DEFAULTS = {
   summary: '',
   media_url: '',
   stage_media: {},
+  warranty: '',
+  contract_url: '',
+  documentation_url: '',
 };
 
 const CLIENT_PROGRESS_STAGES = [
@@ -844,6 +847,29 @@ function ClientPortal({ user, progress, onLogout, onExitToPublic }) {
           </div>
           {progress?.updatedAt && <p className="mt-3 text-[10px] uppercase tracking-widest text-slate-400">Actualizado {new Date(progress.updatedAt).toLocaleString()}</p>}
         </Panel>
+
+        <Panel className="lg:col-span-12 bg-[#fbfcfb]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Garantía, contrato y documentación</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <Badge tone={progress?.warranty ? 'green' : 'neutral'}>{progress?.warranty ? 'Cargada' : 'Pendiente'}</Badge>
+              <h3 className="mt-4 text-xl font-bold text-slate-900">Garantía</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">{progress?.warranty || 'La garantía de esta obra todavía no fue cargada por FILO.'}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <Badge tone={progress?.contractUrl ? 'green' : 'neutral'}>{progress?.contractUrl ? 'Disponible' : 'Pendiente'}</Badge>
+              <h3 className="mt-4 text-xl font-bold text-slate-900">Contrato</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Documento contractual asociado a la obra.</p>
+              {progress?.contractUrl && <a href={progress.contractUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-full border border-[#1F6B3F] px-4 py-2 text-xs font-bold uppercase tracking-widest text-[#1F6B3F]">Ver contrato</a>}
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <Badge tone={progress?.documentationUrl ? 'green' : 'neutral'}>{progress?.documentationUrl ? 'Disponible' : 'Pendiente'}</Badge>
+              <h3 className="mt-4 text-xl font-bold text-slate-900">Documentación</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Archivos técnicos, permisos, certificados o respaldo de la intervención.</p>
+              {progress?.documentationUrl && <a href={progress.documentationUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-full border border-[#1F6B3F] px-4 py-2 text-xs font-bold uppercase tracking-widest text-[#1F6B3F]">Ver documentación</a>}
+            </div>
+          </div>
+        </Panel>
       </main>
     </div>
   );
@@ -1098,6 +1124,9 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
       summary: savedProgress.summary || '',
       media_url: savedProgress.media_url || '',
       stage_media: savedProgress.stage_media || {},
+      warranty: savedProgress.warranty || '',
+      contract_url: savedProgress.contract_url || '',
+      documentation_url: savedProgress.documentation_url || '',
     }));
   }, [activeTab, clientPortalProgress, progressForm.project_id]);
 
@@ -1939,6 +1968,12 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                     <input value={progressForm.current_stage} onChange={(event) => setProgressForm((prev) => ({ ...prev, current_stage: event.target.value }))} placeholder="Etapa actual" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <input value={progressForm.next_step} onChange={(event) => setProgressForm((prev) => ({ ...prev, next_step: event.target.value }))} placeholder="Próximo paso" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
                     <input value={progressForm.estimated_finish} onChange={(event) => setProgressForm((prev) => ({ ...prev, estimated_finish: event.target.value }))} placeholder="Entrega estimada" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Garantía y documentación</p>
+                      <textarea rows="3" value={progressForm.warranty} onChange={(event) => setProgressForm((prev) => ({ ...prev, warranty: event.target.value }))} placeholder="Detalle de garantía para el cliente" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                      <input value={progressForm.contract_url} onChange={(event) => setProgressForm((prev) => ({ ...prev, contract_url: event.target.value }))} placeholder="URL del contrato" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                      <input value={progressForm.documentation_url} onChange={(event) => setProgressForm((prev) => ({ ...prev, documentation_url: event.target.value }))} placeholder="URL de documentación" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    </div>
                     <ImageFieldEditor
                       label="Foto o video del avance"
                       value={progressForm.media_url}

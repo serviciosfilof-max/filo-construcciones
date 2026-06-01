@@ -61,7 +61,7 @@ export default async function handler(req, res) {
 
     const { data: progress, error: progressError } = await supabase
       .from('project_progress')
-      .select('project_id, progress_percent, current_stage, next_step, estimated_finish, summary, media_url, stage_media, updated_at')
+      .select('project_id, progress_percent, current_stage, next_step, estimated_finish, summary, media_url, stage_media, warranty, contract_url, documentation_url, updated_at')
       .order('updated_at', { ascending: false });
 
     if (progressError) return send(res, 500, { error: progressError.message });
@@ -121,6 +121,9 @@ export default async function handler(req, res) {
     const summary = normalizeText(body.summary);
     const media_url = normalizeOptionalUrl(body.media_url);
     const stage_media = normalizeStageMedia(body.stage_media);
+    const warranty = normalizeText(body.warranty);
+    const contract_url = normalizeOptionalUrl(body.contract_url);
+    const documentation_url = normalizeOptionalUrl(body.documentation_url);
 
     if (!project_id) {
       return send(res, 400, { error: 'Falta elegir la obra.' });
@@ -138,11 +141,14 @@ export default async function handler(req, res) {
           summary,
           media_url: media_url || null,
           stage_media,
+          warranty,
+          contract_url: contract_url || null,
+          documentation_url: documentation_url || null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'project_id' }
       )
-      .select('project_id, progress_percent, current_stage, next_step, estimated_finish, summary, media_url, stage_media, updated_at')
+      .select('project_id, progress_percent, current_stage, next_step, estimated_finish, summary, media_url, stage_media, warranty, contract_url, documentation_url, updated_at')
       .single();
 
     if (error) return send(res, 500, { error: error.message });
