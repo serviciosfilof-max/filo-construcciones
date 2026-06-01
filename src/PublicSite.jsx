@@ -28,7 +28,6 @@ function goTo(id, closeMenu) {
   if (el) el.scrollIntoView({ behavior: 'smooth' });
   if (closeMenu) closeMenu();
 }
-
 const WHATSAPP_NUMBER = '5491123010751';
 const WHATSAPP_TEXT = encodeURIComponent(
   'Hola FILO, vi la web y quiero pedir presupuesto por trabajos en altura o fachada.'
@@ -58,7 +57,7 @@ const FEATURE_CARDS = [
   { icon: HardHat, title: 'Técnica moderna', text: 'Trabajo vertical, sellados y pintura con planificación previa.' },
   { icon: ShieldCheck, title: 'Materiales confiables', text: 'Soluciones pensadas para intemperie, humedad y exposición.' },
   { icon: Building2, title: 'Equipo profesional', text: 'Intervención ordenada para edificios, casas y locales.' },
-  { icon: CalendarDays, title: 'Respuesta rápida', text: 'Coordinación por WhatsApp y seguimiento claro de cada consulta.' },
+  { icon: CalendarDays, title: 'Seguimiento real', text: 'Cada cliente puede ver avances, fotos, documentación y próximos pasos desde su portal privado.' },
 ];
 
 function isPlayableVideoUrl(value) {
@@ -358,7 +357,7 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
                 Obra ordenada, segura y visible.
               </h2>
               <p className="mt-6 max-w-xl text-sm font-medium leading-7 text-white/82">
-                Fachadas, pintura exterior, impermeabilización y mantenimiento ejecutados con planificación, seguridad y seguimiento claro.
+                Nos diferenciamos porque cada obra puede seguirse en tiempo real desde un portal privado: avances por etapa, fotos, próximos pasos, garantía, contrato y documentación en un solo lugar. El cliente no tiene que adivinar qué se hizo ni esperar una respuesta para entender cómo viene su obra.
               </p>
               <button onClick={() => goTo('servicios')} className="mt-9 border border-white/70 px-7 py-4 text-xs font-black uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-orange-600">
                 Ver servicios
@@ -562,3 +561,4 @@ export default function PublicSite({ onEnterInternal, content = defaultSiteConte
     </div>
   );
 }
+
