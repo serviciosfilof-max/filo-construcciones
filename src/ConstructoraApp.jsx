@@ -219,6 +219,10 @@ function calculateWorkedHours(record, now = new Date()) {
   return Math.round((milliseconds / 36e5) * 100) / 100;
 }
 
+function isStaleOpenSession(record, now = new Date()) {
+  return !record?.checkOutAt && calculateWorkedHours(record, now) > 16;
+}
+
 function formatWorkedHours(hours) {
   if (!Number.isFinite(hours)) return '0 h';
   return `${hours.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} h`;
@@ -1003,34 +1007,40 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     (acc, record) => {
       const hours = calculateWorkedHours(record, attendanceNow);
       const isOpen = !record.checkOutAt;
+      const isStale = isStaleOpenSession(record, attendanceNow);
       acc.totalHours += isOpen ? 0 : hours;
-      acc.openHours += isOpen ? hours : 0;
-      acc.openSessions += isOpen ? 1 : 0;
+      acc.openHours += isOpen || isStale ? (isStale ? 0 : hours) : 0;
+      acc.openSessions += isOpen && !isStale ? 1 : 0;
+      acc.staleSessions += isStale ? 1 : 0;
       acc.byEmployee[record.employeeId] = acc.byEmployee[record.employeeId] || {
         employeeId: record.employeeId,
         name: userNameById[record.employeeId] || record.employeeId,
         totalHours: 0,
         openHours: 0,
         openSessions: 0,
+        staleSessions: 0,
         sessions: 0,
       };
       acc.byEmployee[record.employeeId].sessions += 1;
       acc.byEmployee[record.employeeId].totalHours += isOpen ? 0 : hours;
-      acc.byEmployee[record.employeeId].openHours += isOpen ? hours : 0;
-      acc.byEmployee[record.employeeId].openSessions += isOpen ? 1 : 0;
+      acc.byEmployee[record.employeeId].openHours += isOpen && !isStale ? hours : 0;
+      acc.byEmployee[record.employeeId].openSessions += isOpen && !isStale ? 1 : 0;
+      acc.byEmployee[record.employeeId].staleSessions += isStale ? 1 : 0;
       acc.byProject[record.projectId] = acc.byProject[record.projectId] || {
         projectId: record.projectId,
         name: projectNameById[record.projectId] || record.projectId,
         totalHours: 0,
         openHours: 0,
+        staleSessions: 0,
         sessions: 0,
       };
       acc.byProject[record.projectId].sessions += 1;
       acc.byProject[record.projectId].totalHours += isOpen ? 0 : hours;
-      acc.byProject[record.projectId].openHours += isOpen ? hours : 0;
+      acc.byProject[record.projectId].openHours += isOpen && !isStale ? hours : 0;
+      acc.byProject[record.projectId].staleSessions += isStale ? 1 : 0;
       return acc;
     },
-    { totalHours: 0, openHours: 0, openSessions: 0, byEmployee: {}, byProject: {} }
+    { totalHours: 0, openHours: 0, openSessions: 0, staleSessions: 0, byEmployee: {}, byProject: {} }
   );
   const employeeWorkSummary = Object.values(attendanceTotals.byEmployee).sort((a, b) => b.totalHours + b.openHours - (a.totalHours + a.openHours));
   const projectWorkSummary = Object.values(attendanceTotals.byProject).sort((a, b) => b.totalHours + b.openHours - (a.totalHours + a.openHours));
@@ -1285,16 +1295,22 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                     <h2 className="text-3xl font-bold tracking-tight text-slate-900">Control de trabajo real</h2>
                     <p className="mt-2 text-sm text-slate-500">Resumen calculado desde las entradas y salidas registradas con QR.</p>
                   </div>
-                  <Badge tone={attendanceTotals.openSessions ? 'amber' : 'green'}>
-                    {attendanceTotals.openSessions ? `${attendanceTotals.openSessions} en obra` : 'Sin turnos abiertos'}
+                  <Badge tone={attendanceTotals.staleSessions ? 'red' : attendanceTotals.openSessions ? 'amber' : 'green'}>
+                    {attendanceTotals.staleSessions ? `${attendanceTotals.staleSessions} sin salida` : attendanceTotals.openSessions ? `${attendanceTotals.openSessions} en obra` : 'Sin turnos abiertos'}
                   </Badge>
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-3">
                   <StatCard label="Horas cerradas" value={formatWorkedHours(attendanceTotals.totalHours)} detail="Con entrada y salida" />
                   <StatCard label="Horas en curso" value={formatWorkedHours(attendanceTotals.openHours)} detail="Turnos abiertos" />
-                  <StatCard label="Registros" value={attendanceRecords.length} detail="Ultimas fichadas" />
+                  <StatCard label="Sin salida" value={attendanceTotals.staleSessions} detail="Revisar fichadas" />
                 </div>
+
+                {attendanceTotals.staleSessions > 0 && (
+                  <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                    Hay fichadas abiertas de más de 16 horas. No se cuentan como horas en curso para no inflar el total; revisá la salida del personal en Asistencia.
+                  </p>
+                )}
 
                 <div className="mt-6 grid gap-6 xl:grid-cols-2">
                   <div className="rounded-[24px] border border-slate-200 bg-[#fbfcfb] p-4">
@@ -1311,6 +1327,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                               <div className="text-right">
                                 <p className="text-lg font-bold text-slate-900">{formatWorkedHours(item.totalHours)}</p>
                                 {item.openSessions > 0 && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-amber-600">En curso {formatWorkedHours(item.openHours)}</p>}
+                                {item.staleSessions > 0 && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-red-600">{item.staleSessions} sin salida</p>}
                               </div>
                             </div>
                           </div>
@@ -1335,6 +1352,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                               <div className="text-right">
                                 <p className="text-lg font-bold text-slate-900">{formatWorkedHours(item.totalHours)}</p>
                                 {item.openHours > 0 && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-amber-600">En curso {formatWorkedHours(item.openHours)}</p>}
+                                {item.staleSessions > 0 && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-red-600">{item.staleSessions} sin salida</p>}
                               </div>
                             </div>
                           </div>
