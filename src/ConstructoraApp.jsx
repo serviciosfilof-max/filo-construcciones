@@ -23,7 +23,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import ProjectQrScanner from './components/ProjectQrScanner';
 import { hasSupabaseEnv, supabase } from './lib/supabaseClient';
-import { loginAdmin, loginStaff, saveSiteContent, uploadSiteImage } from './lib/siteContentApi';
+import { fetchClientPortalAdmin, loginAdmin, loginClient, loginStaff, saveClientPortalAdmin, saveSiteContent, uploadSiteImage } from './lib/siteContentApi';
 import { defaultSiteContent } from './siteContent';
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0995/6432/3185/files/FILO.png?v=1775935955';
@@ -53,6 +53,24 @@ const EMPLOYEE_FORM_DEFAULTS = {
   avatar_url: '',
   password: '',
   admin_code: '',
+};
+const CLIENT_FORM_DEFAULTS = {
+  client_id: '',
+  client_name: '',
+  email: '',
+  phone: '',
+  project_id: 'ALT-001',
+  password: '',
+  active: true,
+};
+const PROGRESS_FORM_DEFAULTS = {
+  project_id: 'ALT-001',
+  progress_percent: 0,
+  current_stage: '',
+  next_step: '',
+  estimated_finish: '',
+  summary: '',
+  media_url: '',
 };
 
 const PROJECTS = [
@@ -228,6 +246,10 @@ function formatWorkedHours(hours) {
   return `${hours.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} h`;
 }
 
+function getProjectById(projectId) {
+  return PROJECTS.find((project) => project.id === projectId) || PROJECTS[0];
+}
+
 function Badge({ children, tone = 'neutral' }) {
   const tones = {
     neutral: 'bg-slate-100 text-slate-700',
@@ -373,6 +395,9 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
   const [staffEmail, setStaffEmail] = useState('');
   const [staffEmployeeId, setStaffEmployeeId] = useState('');
   const [staffPassword, setStaffPassword] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientProjectId, setClientProjectId] = useState('');
+  const [clientPassword, setClientPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -396,6 +421,16 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
     setLoading(true);
     loginStaff({ email: staffEmail, employeeId: staffEmployeeId, password: staffPassword })
       .then((payload) => onLogin(payload.user))
+      .catch((err) => setError(err.message || 'No se pudo iniciar sesión.'))
+      .finally(() => setLoading(false));
+  };
+
+  const submitClientAccess = (event) => {
+    event.preventDefault();
+    setError('');
+    setLoading(true);
+    loginClient({ email: clientEmail, projectId: clientProjectId, password: clientPassword })
+      .then((payload) => onLogin(payload.user, '', payload.progress))
       .catch((err) => setError(err.message || 'No se pudo iniciar sesión.'))
       .finally(() => setLoading(false));
   };
@@ -433,7 +468,7 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
         </Panel>
 
         <Panel className="bg-white p-8 lg:p-10">
-          <div className="flex gap-2 rounded-full bg-slate-100 p-1">
+          <div className="grid grid-cols-3 gap-2 rounded-full bg-slate-100 p-1">
             <button
               onClick={() => {
                 setError('');
@@ -451,6 +486,15 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
               className={`w-full rounded-full px-4 py-3 text-xs font-bold uppercase tracking-widest ${mode === 'staff' ? 'bg-[#1F6B3F] text-white' : 'text-slate-500 hover:text-slate-900'}`}
             >
               Personal
+            </button>
+            <button
+              onClick={() => {
+                setError('');
+                setMode('client');
+              }}
+              className={`w-full rounded-full px-4 py-3 text-xs font-bold uppercase tracking-widest ${mode === 'client' ? 'bg-[#1F6B3F] text-white' : 'text-slate-500 hover:text-slate-900'}`}
+            >
+              Cliente
             </button>
           </div>
 
@@ -515,7 +559,7 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
                 {loading ? 'Validando...' : 'Iniciar sesión'}
               </button>
             </form>
-          ) : (
+          ) : mode === 'staff' ? (
             <form onSubmit={submitStaffAccess} className="mt-8 space-y-4">
               <p className="text-sm text-slate-500">El personal entra a su panel con el correo y el ID que le creo el administrador.</p>
               <div>
@@ -563,6 +607,34 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
                 {loading ? 'Validando...' : 'Entrar al panel'}
               </button>
             </form>
+          ) : (
+            <form onSubmit={submitClientAccess} className="mt-8 space-y-4">
+              <p className="text-sm text-slate-500">El cliente entra para ver solo el avance de su obra.</p>
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Email del cliente</label>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+                  <Mail size={16} className="text-slate-400" />
+                  <input type="email" required value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} placeholder="cliente@email.com" className="w-full bg-transparent text-sm outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Código de obra</label>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+                  <BadgeCheck size={16} className="text-slate-400" />
+                  <input required value={clientProjectId} onChange={(event) => setClientProjectId(event.target.value)} placeholder="ALT-001" className="w-full bg-transparent text-sm uppercase outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">Clave de cliente</label>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+                  <Lock size={16} className="text-slate-400" />
+                  <input type="password" required value={clientPassword} onChange={(event) => setClientPassword(event.target.value)} placeholder="Clave privada de obra" className="w-full bg-transparent text-sm outline-none" />
+                </div>
+              </div>
+              <button type="submit" className="w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white transition hover:opacity-95">
+                {loading ? 'Validando...' : 'Ver avance de obra'}
+              </button>
+            </form>
           )}
 
           {error && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">{error}</p>}
@@ -575,12 +647,115 @@ function LoginScreen({ onLogin, users, usersSource, usersError }) {
     </div>
   );
 }
+
+function ClientPortal({ user, progress, onLogout, onExitToPublic }) {
+  const project = getProjectById(user.projectId);
+  const percent = Math.max(0, Math.min(100, Number(progress?.progressPercent ?? project.progress ?? 0)));
+  const stages = [
+    { label: 'Relevamiento', limit: 10 },
+    { label: 'Preparación', limit: 30 },
+    { label: 'Ejecución', limit: 70 },
+    { label: 'Terminaciones', limit: 90 },
+    { label: 'Entrega', limit: 100 },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#f6f8f6] text-slate-900">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+          <div className="flex items-center gap-4">
+            <img src={LOGO_URL} alt="Filo Constructora" className="h-10 w-auto object-contain" />
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-[#1F6B3F]">Portal cliente</p>
+              <p className="text-xs text-slate-500">{user.name}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {onExitToPublic && (
+              <button onClick={onExitToPublic} className="rounded-full border border-[#1F6B3F] px-4 py-2 text-xs font-bold uppercase tracking-widest text-[#1F6B3F]">
+                Sitio público
+              </button>
+            )}
+            <button onClick={onLogout} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-bold uppercase tracking-widest text-slate-500">
+              Salir
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-12">
+        <Panel className="lg:col-span-8">
+          <Badge tone="green">{project.id}</Badge>
+          <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-900">{project.name}</h1>
+          <p className="mt-2 text-sm text-slate-500">{project.location}</p>
+          <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Avance general</p>
+              <p className="mt-2 text-6xl font-bold tracking-tight text-[#1F6B3F]">{percent}%</p>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="h-4 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-[#1F6B3F]" style={{ width: `${percent}%` }} />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-slate-700">{progress?.currentStage || project.status}</p>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel className="lg:col-span-4 bg-[#fbfcfb]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Próximo paso</p>
+          <h2 className="mt-3 text-2xl font-bold text-slate-900">{progress?.nextStep || 'Próxima actualización pendiente'}</h2>
+          <p className="mt-4 text-sm leading-6 text-slate-500">{progress?.summary || 'FILO va a cargar el avance de obra y las novedades principales desde el panel interno.'}</p>
+          {progress?.estimatedFinish && <Badge tone="amber">Entrega estimada: {progress.estimatedFinish}</Badge>}
+        </Panel>
+
+        <Panel className="lg:col-span-7">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Etapas</p>
+          <div className="mt-5 space-y-3">
+            {stages.map((stage) => {
+              const done = percent >= stage.limit;
+              return (
+                <div key={stage.label} className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full ${done ? 'bg-[#1F6B3F] text-white' : 'bg-slate-100 text-slate-400'}`}>
+                      <CheckSquare size={16} />
+                    </div>
+                    <p className="font-semibold text-slate-900">{stage.label}</p>
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">{stage.limit}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+
+        <Panel className="lg:col-span-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Material de avance</p>
+          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+            {progress?.mediaUrl ? (
+              isPlayableVideoUrl(progress.mediaUrl) ? (
+                <video src={progress.mediaUrl} className="h-72 w-full object-cover" controls playsInline />
+              ) : (
+                <img src={progress.mediaUrl} alt="Avance de obra" className="h-72 w-full object-cover" />
+              )
+            ) : (
+              <div className="flex h-72 items-center justify-center text-sm text-slate-400">Sin fotos o videos cargados.</div>
+            )}
+          </div>
+          {progress?.updatedAt && <p className="mt-3 text-[10px] uppercase tracking-widest text-slate-400">Actualizado {new Date(progress.updatedAt).toLocaleString()}</p>}
+        </Panel>
+      </main>
+    </div>
+  );
+}
+
 export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteContentChange, siteContentSource }) {
   const [users, setUsers] = useState(FALLBACK_USERS);
   const [usersSource, setUsersSource] = useState('local');
   const [usersError, setUsersError] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [currentAdminPassword, setCurrentAdminPassword] = useState('');
+  const [clientProgress, setClientProgress] = useState(null);
   const [employeeForm, setEmployeeForm] = useState(EMPLOYEE_FORM_DEFAULTS);
   const [employeeFormMessage, setEmployeeFormMessage] = useState('');
   const [employeeFormError, setEmployeeFormError] = useState('');
@@ -598,6 +773,13 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   const [contentSyncState, setContentSyncState] = useState('idle');
   const [contentSyncError, setContentSyncError] = useState('');
   const [imageUploadingKey, setImageUploadingKey] = useState('');
+  const [clientForm, setClientForm] = useState(CLIENT_FORM_DEFAULTS);
+  const [progressForm, setProgressForm] = useState(PROGRESS_FORM_DEFAULTS);
+  const [clientPortalClients, setClientPortalClients] = useState([]);
+  const [clientPortalProgress, setClientPortalProgress] = useState([]);
+  const [clientPortalMessage, setClientPortalMessage] = useState('');
+  const [clientPortalError, setClientPortalError] = useState('');
+  const [clientPortalLoading, setClientPortalLoading] = useState(false);
   const content = siteContent || defaultSiteContent;
 
   const updateContent = (updater) => {
@@ -748,9 +930,65 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     };
   }, [activeTab, selectedProject, currentUser?.id]);
 
-  const handleLogin = (user, adminPassword = '') => {
+  async function loadClientPortal() {
+    if (!currentAdminPassword) return;
+    setClientPortalLoading(true);
+    setClientPortalError('');
+    try {
+      const payload = await fetchClientPortalAdmin(currentAdminPassword);
+      setClientPortalClients(payload.clients || []);
+      setClientPortalProgress(payload.progress || []);
+      setClientPortalMessage('');
+    } catch (error) {
+      setClientPortalError(error.message || 'No se pudo cargar el portal de clientes.');
+    } finally {
+      setClientPortalLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'clientes' && currentUser?.role === 'admin') {
+      loadClientPortal();
+    }
+  }, [activeTab, currentUser?.role]);
+
+  const handleSaveClientAccess = async (event) => {
+    event.preventDefault();
+    setClientPortalMessage('');
+    setClientPortalError('');
+    setClientPortalLoading(true);
+    try {
+      await saveClientPortalAdmin({ action: 'client', ...clientForm }, currentAdminPassword);
+      setClientPortalMessage('Acceso de cliente guardado.');
+      setClientForm(CLIENT_FORM_DEFAULTS);
+      await loadClientPortal();
+    } catch (error) {
+      setClientPortalError(error.message || 'No se pudo guardar el cliente.');
+    } finally {
+      setClientPortalLoading(false);
+    }
+  };
+
+  const handleSaveProjectProgress = async (event) => {
+    event.preventDefault();
+    setClientPortalMessage('');
+    setClientPortalError('');
+    setClientPortalLoading(true);
+    try {
+      await saveClientPortalAdmin({ action: 'progress', ...progressForm }, currentAdminPassword);
+      setClientPortalMessage('Avance de obra guardado.');
+      await loadClientPortal();
+    } catch (error) {
+      setClientPortalError(error.message || 'No se pudo guardar el avance.');
+    } finally {
+      setClientPortalLoading(false);
+    }
+  };
+
+  const handleLogin = (user, adminPassword = '', progress = null) => {
     setCurrentUser(user);
     setCurrentAdminPassword(adminPassword);
+    setClientProgress(progress);
     localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id, loggedAt: new Date().toISOString() }));
   };
 
@@ -959,6 +1197,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     localStorage.removeItem(SESSION_KEY);
     setCurrentUser(null);
     setCurrentAdminPassword('');
+    setClientProgress(null);
     setSelectedProject(PROJECTS[0]);
     setActiveTab('inicio');
     setScannerOpen(false);
@@ -971,11 +1210,16 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     return <LoginScreen onLogin={handleLogin} users={users} usersSource={usersSource} usersError={usersError} />;
   }
 
+  if (currentUser.role === 'client') {
+    return <ClientPortal user={currentUser} progress={clientProgress} onLogout={handleLogout} onExitToPublic={onExitToPublic} />;
+  }
+
   const menuItems = [
     { id: 'inicio', icon: LayoutDashboard, label: 'Inicio' },
     { id: 'obras', icon: Construction, label: 'Obras' },
     { id: 'asistencia', icon: QrCode, label: 'Asistencia' },
     { id: 'personal', icon: User, label: 'Personal', roles: ['supervisor', 'administrativo'] },
+    { id: 'clientes', icon: Lock, label: 'Clientes', roles: ['admin'] },
     { id: 'finanzas', icon: DollarSign, label: 'Costos', roles: ['supervisor', 'administrativo'] },
     { id: 'insumos', icon: PackageCheck, label: 'Insumos', roles: ['supervisor', 'tecnico_vertical', 'administrativo'] },
     { id: 'contenido', icon: Layers, label: 'Contenido', roles: ['supervisor', 'administrativo'] },
@@ -1279,6 +1523,78 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
                         <p className="text-[10px] uppercase tracking-widest text-slate-400">{record.status === 'in' ? 'Entrada' : 'Salida'}</p>
                       </div>
                       <p className="text-[10px] uppercase tracking-widest text-slate-500">{new Date(record.checkInAt).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            </section>
+          )}
+
+          {activeTab === 'clientes' && (
+            <section className="space-y-6">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Portal cliente</p>
+                  <h2 className="text-3xl font-bold tracking-tight text-slate-900">Avance visible para propietarios</h2>
+                </div>
+                <button onClick={loadClientPortal} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Actualizar
+                </button>
+              </div>
+
+              {clientPortalMessage && <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{clientPortalMessage}</p>}
+              {clientPortalError && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{clientPortalError}</p>}
+
+              <div className="grid gap-6 xl:grid-cols-2">
+                <Panel>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#1F6B3F]">Acceso cliente</p>
+                  <h3 className="mt-2 text-2xl font-bold text-slate-900">Crear usuario de cliente</h3>
+                  <form onSubmit={handleSaveClientAccess} className="mt-5 grid gap-4 md:grid-cols-2">
+                    <input required value={clientForm.client_id} onChange={(event) => setClientForm((prev) => ({ ...prev, client_id: event.target.value }))} placeholder="CLI-001" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input required value={clientForm.client_name} onChange={(event) => setClientForm((prev) => ({ ...prev, client_name: event.target.value }))} placeholder="Nombre del cliente" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input required type="email" value={clientForm.email} onChange={(event) => setClientForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="cliente@email.com" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input value={clientForm.phone} onChange={(event) => setClientForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder="WhatsApp" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <select value={clientForm.project_id} onChange={(event) => setClientForm((prev) => ({ ...prev, project_id: event.target.value }))} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
+                      {PROJECTS.map((project) => <option key={project.id} value={project.id}>{project.id} - {project.name}</option>)}
+                    </select>
+                    <input type="password" value={clientForm.password} onChange={(event) => setClientForm((prev) => ({ ...prev, password: event.target.value }))} placeholder="Clave de cliente" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <button disabled={clientPortalLoading} type="submit" className="md:col-span-2 rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-60">
+                      Guardar acceso
+                    </button>
+                  </form>
+                </Panel>
+
+                <Panel>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#1F6B3F]">Avance de obra</p>
+                  <h3 className="mt-2 text-2xl font-bold text-slate-900">Actualizar portal</h3>
+                  <form onSubmit={handleSaveProjectProgress} className="mt-5 space-y-4">
+                    <select value={progressForm.project_id} onChange={(event) => setProgressForm((prev) => ({ ...prev, project_id: event.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]">
+                      {PROJECTS.map((project) => <option key={project.id} value={project.id}>{project.id} - {project.name}</option>)}
+                    </select>
+                    <input type="number" min="0" max="100" value={progressForm.progress_percent} onChange={(event) => setProgressForm((prev) => ({ ...prev, progress_percent: event.target.value }))} placeholder="Porcentaje de avance" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input value={progressForm.current_stage} onChange={(event) => setProgressForm((prev) => ({ ...prev, current_stage: event.target.value }))} placeholder="Etapa actual" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input value={progressForm.next_step} onChange={(event) => setProgressForm((prev) => ({ ...prev, next_step: event.target.value }))} placeholder="Próximo paso" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input value={progressForm.estimated_finish} onChange={(event) => setProgressForm((prev) => ({ ...prev, estimated_finish: event.target.value }))} placeholder="Entrega estimada" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <input value={progressForm.media_url} onChange={(event) => setProgressForm((prev) => ({ ...prev, media_url: event.target.value }))} placeholder="URL de foto o video" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <textarea rows="4" value={progressForm.summary} onChange={(event) => setProgressForm((prev) => ({ ...prev, summary: event.target.value }))} placeholder="Resumen para el cliente" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1F6B3F]" />
+                    <button disabled={clientPortalLoading} type="submit" className="w-full rounded-full bg-[#1F6B3F] px-6 py-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-60">
+                      Guardar avance
+                    </button>
+                  </form>
+                </Panel>
+              </div>
+
+              <Panel>
+                <div className="flex items-center justify-between gap-4">
+                  <h3 className="text-2xl font-bold text-slate-900">Accesos creados</h3>
+                  <Badge tone="neutral">{clientPortalClients.length} clientes</Badge>
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {clientPortalClients.map((client) => (
+                    <div key={client.client_id} className="rounded-2xl border border-slate-200 p-4">
+                      <p className="font-semibold text-slate-900">{client.client_name}</p>
+                      <p className="mt-1 text-xs text-slate-500">{client.email}</p>
+                      <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-[#1F6B3F]">{client.project_id}</p>
                     </div>
                   ))}
                 </div>

@@ -5,6 +5,8 @@ const SITE_IMAGE_UPLOAD_ENDPOINT = '/api/upload-image';
 const SITE_UPLOAD_URL_ENDPOINT = '/api/upload-url';
 const ADMIN_LOGIN_ENDPOINT = '/api/admin-login';
 const STAFF_LOGIN_ENDPOINT = '/api/staff-login';
+const CLIENT_LOGIN_ENDPOINT = '/api/client-login';
+const CLIENT_PORTAL_ENDPOINT = '/api/client-portal';
 
 async function readJsonResponse(response) {
   const payload = await response.json().catch(() => ({}));
@@ -46,6 +48,42 @@ export async function loginStaff({ email, employeeId, password }) {
       email,
       employeeId,
       password,
+    }),
+  });
+
+  return readJsonResponse(response);
+}
+
+export async function loginClient({ email, projectId, password }) {
+  const response = await fetch(CLIENT_LOGIN_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      projectId,
+      password,
+    }),
+  });
+
+  return readJsonResponse(response);
+}
+
+export async function fetchClientPortalAdmin(adminPassword) {
+  const response = await fetch(`${CLIENT_PORTAL_ENDPOINT}?admin_code=${encodeURIComponent(adminPassword || '')}`);
+  return readJsonResponse(response);
+}
+
+export async function saveClientPortalAdmin(payload, adminPassword) {
+  const response = await fetch(CLIENT_PORTAL_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      ...payload,
+      admin_code: adminPassword,
     }),
   });
 
