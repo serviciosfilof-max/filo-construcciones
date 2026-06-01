@@ -210,6 +210,20 @@ function mapAttendanceRow(row) {
   };
 }
 
+function calculateWorkedHours(record, now = new Date()) {
+  if (!record?.checkInAt) return 0;
+  const start = new Date(record.checkInAt);
+  const end = record.checkOutAt ? new Date(record.checkOutAt) : now;
+  const milliseconds = end.getTime() - start.getTime();
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return 0;
+  return Math.round((milliseconds / 36e5) * 100) / 100;
+}
+
+function formatWorkedHours(hours) {
+  if (!Number.isFinite(hours)) return '0 h';
+  return `${hours.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} h`;
+}
+
 function Badge({ children, tone = 'neutral' }) {
   const tones = {
     neutral: 'bg-slate-100 text-slate-700',
@@ -674,7 +688,7 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
     let cancelled = false;
 
     async function loadAttendance() {
-      if (activeTab !== 'asistencia' || !selectedProject) return;
+      if (!['asistencia', 'personal'].includes(activeTab) || !selectedProject) return;
       setAttendanceLoading(true);
       setAttendanceError('');
 
@@ -697,12 +711,17 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
         return;
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('attendance_sessions')
         .select('id, employee_id, project_id, check_in_at, check_out_at, status, qr_payload')
-        .eq('project_id', selectedProject.id)
         .order('check_in_at', { ascending: false })
-        .limit(10);
+        .limit(activeTab === 'personal' ? 250 : 10);
+
+      if (activeTab === 'asistencia') {
+        query = query.eq('project_id', selectedProject.id);
+      }
+
+      const { data, error } = await query;
 
       if (cancelled) return;
 
@@ -971,6 +990,50 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
   const roleTasks = TASKS.filter((task) => roleDashboard.tasks.includes(task.id));
   const roleSupplies = currentUser.role === 'operario' ? SUPPLIES.slice(0, 4) : SUPPLIES;
   const canRegisterAttendance = currentUser.role !== 'admin';
+  const userNameById = users.reduce((acc, user) => {
+    acc[user.id] = user.name;
+    return acc;
+  }, {});
+  const projectNameById = PROJECTS.reduce((acc, project) => {
+    acc[project.id] = project.name;
+    return acc;
+  }, {});
+  const attendanceNow = new Date();
+  const attendanceTotals = attendanceRecords.reduce(
+    (acc, record) => {
+      const hours = calculateWorkedHours(record, attendanceNow);
+      const isOpen = !record.checkOutAt;
+      acc.totalHours += isOpen ? 0 : hours;
+      acc.openHours += isOpen ? hours : 0;
+      acc.openSessions += isOpen ? 1 : 0;
+      acc.byEmployee[record.employeeId] = acc.byEmployee[record.employeeId] || {
+        employeeId: record.employeeId,
+        name: userNameById[record.employeeId] || record.employeeId,
+        totalHours: 0,
+        openHours: 0,
+        openSessions: 0,
+        sessions: 0,
+      };
+      acc.byEmployee[record.employeeId].sessions += 1;
+      acc.byEmployee[record.employeeId].totalHours += isOpen ? 0 : hours;
+      acc.byEmployee[record.employeeId].openHours += isOpen ? hours : 0;
+      acc.byEmployee[record.employeeId].openSessions += isOpen ? 1 : 0;
+      acc.byProject[record.projectId] = acc.byProject[record.projectId] || {
+        projectId: record.projectId,
+        name: projectNameById[record.projectId] || record.projectId,
+        totalHours: 0,
+        openHours: 0,
+        sessions: 0,
+      };
+      acc.byProject[record.projectId].sessions += 1;
+      acc.byProject[record.projectId].totalHours += isOpen ? 0 : hours;
+      acc.byProject[record.projectId].openHours += isOpen ? hours : 0;
+      return acc;
+    },
+    { totalHours: 0, openHours: 0, openSessions: 0, byEmployee: {}, byProject: {} }
+  );
+  const employeeWorkSummary = Object.values(attendanceTotals.byEmployee).sort((a, b) => b.totalHours + b.openHours - (a.totalHours + a.openHours));
+  const projectWorkSummary = Object.values(attendanceTotals.byProject).sort((a, b) => b.totalHours + b.openHours - (a.totalHours + a.openHours));
   return (
     <div className="min-h-screen bg-[#f6f8f6] text-slate-900">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -1215,6 +1278,75 @@ export default function ConstructoraApp({ onExitToPublic, siteContent, onSiteCon
 
           {activeTab === 'personal' && (
             <section className="space-y-6">
+              <Panel>
+                <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Horas del equipo</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Control de trabajo real</h2>
+                    <p className="mt-2 text-sm text-slate-500">Resumen calculado desde las entradas y salidas registradas con QR.</p>
+                  </div>
+                  <Badge tone={attendanceTotals.openSessions ? 'amber' : 'green'}>
+                    {attendanceTotals.openSessions ? `${attendanceTotals.openSessions} en obra` : 'Sin turnos abiertos'}
+                  </Badge>
+                </div>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  <StatCard label="Horas cerradas" value={formatWorkedHours(attendanceTotals.totalHours)} detail="Con entrada y salida" />
+                  <StatCard label="Horas en curso" value={formatWorkedHours(attendanceTotals.openHours)} detail="Turnos abiertos" />
+                  <StatCard label="Registros" value={attendanceRecords.length} detail="Ultimas fichadas" />
+                </div>
+
+                <div className="mt-6 grid gap-6 xl:grid-cols-2">
+                  <div className="rounded-[24px] border border-slate-200 bg-[#fbfcfb] p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Por empleado</p>
+                    <div className="mt-4 space-y-3">
+                      {employeeWorkSummary.length ? (
+                        employeeWorkSummary.map((item) => (
+                          <div key={item.employeeId} className="rounded-2xl border border-slate-200 bg-white p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="font-semibold text-slate-900">{item.name}</p>
+                                <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-400">{item.employeeId} · {item.sessions} registros</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-slate-900">{formatWorkedHours(item.totalHours)}</p>
+                                {item.openSessions > 0 && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-amber-600">En curso {formatWorkedHours(item.openHours)}</p>}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">Todavía no hay fichadas cargadas.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[24px] border border-slate-200 bg-[#fbfcfb] p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Por obra</p>
+                    <div className="mt-4 space-y-3">
+                      {projectWorkSummary.length ? (
+                        projectWorkSummary.map((item) => (
+                          <div key={item.projectId} className="rounded-2xl border border-slate-200 bg-white p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="font-semibold text-slate-900">{item.name}</p>
+                                <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-400">{item.projectId} · {item.sessions} registros</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-slate-900">{formatWorkedHours(item.totalHours)}</p>
+                                {item.openHours > 0 && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-amber-600">En curso {formatWorkedHours(item.openHours)}</p>}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">Todavía no hay fichadas por obra.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Panel>
+
               <Panel>
                 <div className="flex items-center justify-between gap-4">
                   <div>
